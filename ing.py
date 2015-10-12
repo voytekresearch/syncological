@@ -90,10 +90,15 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     tau_r_nmda = 1 * ms
     tau_d_nmda = 100 * ms
     
-    g_sigma_e = np.sqrt(0.0035) * msiemens
-    g_sigma_i = np.sqrt(0.0092) * msiemens
+    # OU noise; High conductance sim
+    # g_back_e = 0.018 * usiemens
+    # g_back_i = 0.098 * usiemens
+    g_back_e = 10 * 0.018 * usiemens
+    g_back_i = 10 * 0.098 * usiemens
+    g_sigma_e = 10 * 0.0035 * usiemens
+    g_sigma_i = 10 * 0.0092 * usiemens
     tau_e_back = 2.6 * ms
-    tau_i_back = 0.8 * ms
+    tau_i_back = 8.0 * ms
 
     V_i = -80 * mV
     V_e = 0 * mV
@@ -153,8 +158,8 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
         g_e : siemens
         g_i : siemens
     """ + """
-        I_back = x * g_sigma_e * (V_e - V) +
-                 y * g_sigma_i * (V_i - V) : amp
+        I_back = (g_back_e + (x * g_sigma_e)) * (V_e - V) +
+                 (g_back_i + (y * g_sigma_i)) * (V_i - V) : amp
         dx/dt = -x/tau_e_back + tau_e_back**-0.5*xi_1 : 1
         dy/dt = -y/tau_i_back + tau_i_back**-0.5*xi_2 : 1
     """
@@ -174,15 +179,19 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
         g_i_post = g : siemens (summed)
     """
 
-    # noise_e ="""
-    # g = g_sigma_e ** -0.5 * x : siemens
-    # dx/dt = -x/tau_e_back + tau_e_back**-0.5*xi : 1
-    # """
-    #
-    # noise_i ="""
-    # g = g_sigma_i ** -0.5 * x : siemens
-    # dx/dt = -x/tau_i_back + tau_i_back**-0.5*xi : 1
-    # """
+    # --
+    # Stimulus
+    time_stim = time_stim/second
+    window = 500/1000.
+    t_min = time_stim - window / 2
+    t_max = time_stim + window / 2
+    stdev = 100/1000. # 100 ms
+
+    rate = 5 # Hz
+    k = N_stim * int(rate / 2)
+
+    ts, idxs = gaussian_impulse(time_stim, t_min, t_max, stdev, N_stim, k, 
+            decimals=decimals)
 
     # --
     # Build networks
@@ -199,29 +208,12 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
         refractory=3*ms
         # method='exponential_euler' 
     )
-    
-    # --
-    # Syn
-    # Stimulus
-    time_stim = time_stim/second
-    window = 500/1000.
-    t_min = time_stim - window / 2
-    t_max = time_stim + window / 2
-    stdev = 100/1000. # 100 ms
-
-    rate = 5 # Hz
-    k = N_stim * int(rate / 2)
-
-    ts, idxs = gaussian_impulse(time_stim, t_min, t_max, stdev, N_stim, k, 
-            decimals=decimals)
     P_stim = SpikeGeneratorGroup(N_stim, idxs, ts*second)
 
     # --
     # Connections
-    C_stim_e = Synapses(
-        P_stim, P_e, model=syn_e_in, 
-        pre='g += w_e', connect='i == j'
-    )
+    C_stim_e = Synapses(P_stim, P_e, model=syn_e_in, pre='g += w_e', 
+                        connect='i == j')
 
     C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie')
     C_ie.connect(True, p=0.4)
