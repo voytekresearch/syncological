@@ -95,10 +95,10 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     # g_back_e = 0.018 * usiemens
     # g_back_i = 0.098 * usiemens
     k = 30
-    g_back_e = 0.018 * msiemens
-    g_back_i = 0.098 * msiemens
-    g_sigma_e = k*0.0035 * msiemens
-    g_sigma_i = k*0.0092 * msiemens
+    g_back_e = 0.018 * usiemens
+    g_back_i = 0.098 * usiemens
+    g_sigma_e = k*0.0035 * usiemens
+    g_sigma_i = k*0.0092 * usiemens
     tau_e_back = tau_d_ampa
     tau_i_back = tau_d_gaba
 
