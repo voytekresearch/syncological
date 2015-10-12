@@ -75,7 +75,8 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
 
     g_Na = 100 * msiemens
     g_K = 80 * msiemens
-    g_l = 0.1 * msiemens
+    # g_l = 0.1 * msiemens
+    g_l = 0.045 * msiemens
 
     V_Na = 50 * mV
     V_K = -100 * mV
@@ -93,12 +94,13 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     # OU noise; High conductance sim
     # g_back_e = 0.018 * usiemens
     # g_back_i = 0.098 * usiemens
-    g_back_e = 10 * 0.018 * usiemens
-    g_back_i = 10 * 0.098 * usiemens
-    g_sigma_e = 10 * 0.0035 * usiemens
-    g_sigma_i = 10 * 0.0092 * usiemens
-    tau_e_back = 2.6 * ms
-    tau_i_back = 8.0 * ms
+    k = 30
+    g_back_e = 0.018 * msiemens
+    g_back_i = 0.098 * msiemens
+    g_sigma_e = k*0.0035 * msiemens
+    g_sigma_i = k*0.0092 * msiemens
+    tau_e_back = tau_d_ampa
+    tau_i_back = tau_d_gaba
 
     V_i = -80 * mV
     V_e = 0 * mV
@@ -160,8 +162,8 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     """ + """
         I_back = (g_back_e + (x * g_sigma_e)) * (V_e - V) +
                  (g_back_i + (y * g_sigma_i)) * (V_i - V) : amp
-        dx/dt = -x/tau_e_back + tau_e_back**-0.5*xi_1 : 1
-        dy/dt = -y/tau_i_back + tau_i_back**-0.5*xi_2 : 1
+        dx/dt = -x/tau_e_back + (2 / tau_e_back) ** .5 * xi_1 : 1
+        dy/dt = -y/tau_i_back + (2 / tau_i_back) ** .5 * xi_2: 1
     """
 
     syn_e_in = """
@@ -190,8 +192,9 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     rate = 5 # Hz
     k = N_stim * int(rate / 2)
 
-    ts, idxs = gaussian_impulse(time_stim, t_min, t_max, stdev, N_stim, k, 
-            decimals=decimals)
+    ts, idxs = gaussian_impulse(time_stim, t_min, 
+                                t_max, stdev, N_stim, k, 
+                                decimals=decimals)
 
     # --
     # Build networks
@@ -208,17 +211,21 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
         refractory=3*ms
         # method='exponential_euler' 
     )
+    P_e.x = 1.0
+    P_e.y = 1.0
     P_stim = SpikeGeneratorGroup(N_stim, idxs, ts*second)
 
     # --
     # Connections
-    C_stim_e = Synapses(P_stim, P_e, model=syn_e_in, pre='g += w_e', 
+    C_stim_e = Synapses(P_stim, P_e, 
+                        model=syn_e_in, pre='g += w_e', 
                         connect='i == j')
 
     C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie')
     C_ie.connect(True, p=0.4)
     
-    C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += gSyn_wb', connect=True)
+    C_ii = Synapses(P_i, P_i, model=syn_i, 
+                    pre='g += gSyn_wb', connect=True)
     
     # --
     # Init
@@ -231,7 +238,8 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     # Record
     spikes_i = SpikeMonitor(P_i)
     spikes_e = SpikeMonitor(P_e)
-    voltages_e = StateMonitor(P_e, ('V', 'g_e', 'g_i'), record=range(11, 31))
+    voltages_e = StateMonitor(P_e, ('V', 'g_e', 'g_i', 'x', 'y'), 
+                              record=range(11, 31))
     voltages_i = StateMonitor(P_i, ('v', 'g_i'), record=range(11, 31))
 
     # --
@@ -249,6 +257,7 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     
 def analyze(result):
     pass
+
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
