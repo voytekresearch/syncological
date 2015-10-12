@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """Thal input (weak and highly sync) drives gamma [0].
 
 E/I balanced. Dropped I -> I
@@ -21,7 +23,7 @@ N_stim = 20
 
 f_thal = 45
 N_thal = N_e
-k_thal = 10
+k_thal = 20
 
 k_r_e = 1
 r_e = k_r_e * 10 * Hz
@@ -40,7 +42,7 @@ w_e_stim = w_e * N_stim
 
 w_ei = 1 / N_e * msiemens
 w_ee = 0 / N_e * msiemens
-w_ie = 0.5 / N_i * msiemens
+w_ie = 0.2 / N_i * msiemens
 w_ii = 0.1 / N_i * msiemens
 w_m = 0 / N_e * msiemens # Read ref 47 to get value
 
@@ -156,12 +158,18 @@ C_thal_e = Synapses(P_thal, P_e, model=syn_e_in, pre='g += w_e', connect='i == j
 # C_thal_i = Synapses(P_thal, P_i, model=syn_e_in, pre='g += w_e', connect='i == j')
 
 # Balance E/I
-C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei', connect=True)
-C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie', connect=True)
-C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii', connect=True)
+C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei')
+C_ei.connect(True, p=0.4)
 
-# EE
-# TODO connectivity?
+C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie')
+C_ie.connect(True, p=0.4)
+
+C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii')
+C_ii.connect(True, p=1.0)
+
+# C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei', connect=True)
+# C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie', connect=True)
+# C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii', connect=True)
 # C_ee_ampa = Synapses(P_e, P_e, model=syn_ampa, pre='g_ampa += g_ee')
 # C_ee_nmda = Synapses(P_e, P_e, model=syn_nmda, pre='g_nmda += g_ee')
 

@@ -100,7 +100,7 @@ def gaussian_impulse(t, min_t, max_t, stdev, N, k, decimals=5, prng=None):
     decimals = int(decimals)
 
     # Create the burst and set the time resolution
-    times = prng.normal(t, stdev, int(k + (k * 20)))
+    times = prng.normal(t, stdev, int(k))
     times = np.round(times, decimals=decimals)
 
     # Remove negative time
@@ -114,7 +114,7 @@ def gaussian_impulse(t, min_t, max_t, stdev, N, k, decimals=5, prng=None):
     times = times[mask]
 
     # Drop identical times
-    times = np.unique(times)
+    times = np.unique(times) #[0:k]
 
     # Drop identical times
     # Randomly assign neurons to times

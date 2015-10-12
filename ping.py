@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """Implements the model of Kopell PNAS 2005, 2008"""
 from __future__ import division
 import numpy as np
@@ -152,30 +154,36 @@ P_stim1 = PoissonGroup(N_stim, rates=r_stim1)
 C_in_e = Synapses(P_e_in, P_e, model=syn_e_in, pre='g += w_e', connect='i == j')
 C_in_i = Synapses(P_i_in, P_i, model=syn_e_in, pre='g += w_i', connect='i == j')
 
-C_stim1_e = Synapses(P_stim1, P_e, model=syn_e_in, pre='g += w_e_stim')
-C_stim1_e.connect(range(0, 20), range(11, 31))
-C_stim1_i = Synapses(P_stim1, P_i, model=syn_e_in, pre='g += w_e_stim')
-C_stim1_i.connect(range(0, 20), range(11, 31))
+# C_stim1_e = Synapses(P_stim1, P_e, model=syn_e_in, pre='g += w_e_stim')
+# C_stim1_e.connect(range(0, 20), range(11, 31))
+# C_stim1_i = Synapses(P_stim1, P_i, model=syn_e_in, pre='g += w_e_stim')
+# C_stim1_i.connect(range(0, 20), range(11, 31))
 
 # PING
-C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei', connect=True)
-C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie', connect=True)
-C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii', connect=True)
+C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei')
+C_ei.connect(True, p=0.4)
 
-# EE
-# TODO connectivity?
+C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie')
+C_ie.connect(True, p=0.4)
+
+C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii')
+C_ii.connect(True, p=1.0)
+
+# C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei', connect=True)
+# C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie', connect=True)
+# C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii', connect=True)
 # C_ee_ampa = Synapses(P_e, P_e, model=syn_ampa, pre='g_ampa += g_ee')
 # C_ee_nmda = Synapses(P_e, P_e, model=syn_nmda, pre='g_nmda += g_ee')
 
 # --
 # Init
 # TODO make uniform rand
-# P_e.V = np.random.uniform(V_l, V_thresh-1*mV, N_e) * mV
-# P_i.V = np.random.uniform(V_l, V_thresh-1*mV, N_i) * mV
+P_e.V = V_l
+P_i.V = V_l
 P_e.I = np.random.uniform(I_e_range[0], I_e_range[1], N_e) * k_I * uamp
 P_i.I = np.random.uniform(I_i_range[0], I_i_range[1], N_i) * k_I * uamp
-P_e_stim1.I = np.random.uniform(I_e_range[0], I_e_range[1], N_stim) * 1.50 * uamp
-P_e_stim2.I = np.random.uniform(I_e_range[0], I_e_range[1], N_stim) * 1.50 * uamp
+# P_e_stim1.I = np.random.uniform(I_e_range[0], I_e_range[1], N_stim) * 1.50 * uamp
+# P_e_stim2.I = np.random.uniform(I_e_range[0], I_e_range[1], N_stim) * 1.50 * uamp
 
 # --
 # Record
