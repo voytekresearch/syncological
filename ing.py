@@ -38,7 +38,7 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     # --
     # Model
     np.random.seed(seed)
-    time_step = 0.1 * ms
+    time_step = 0.01 * ms
     decimals = 4
     
     # --
@@ -89,6 +89,11 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     tau_d_gaba = 10 * ms
     tau_r_nmda = 1 * ms
     tau_d_nmda = 100 * ms
+    
+    g_sigma_e = np.sqrt(0.0035) * msiemens
+    g_sigma_i = np.sqrt(0.0092) * msiemens
+    tau_e_back = 2.6 * ms
+    tau_i_back = 0.8 * ms
 
     V_i = -80 * mV
     V_e = 0 * mV
@@ -123,7 +128,7 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     """
 
     hh = """
-        dV/dt = (I_Na + I_K + I_l + I_m + I_syn + I) / Cm : volt
+        dV/dt = (I_Na + I_K + I_l + I_m + I_syn + I_back) / Cm : volt
     """ + """
         I_Na = g_Na * (m ** 3) * h * (V_Na - V) : amp
         m = a_m / (a_m + b_m) : 1
@@ -148,7 +153,10 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
         g_e : siemens
         g_i : siemens
     """ + """
-        I : amp
+        I_back = x * g_sigma_e * (V_e - V) +
+                 y * g_sigma_i * (V_i - V) : amp
+        dx/dt = -x/tau_e_back + tau_e_back**-0.5*xi_1 : 1
+        dy/dt = -y/tau_i_back + tau_i_back**-0.5*xi_2 : 1
     """
 
     syn_e_in = """
@@ -166,6 +174,16 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
         g_i_post = g : siemens (summed)
     """
 
+    # noise_e ="""
+    # g = g_sigma_e ** -0.5 * x : siemens
+    # dx/dt = -x/tau_e_back + tau_e_back**-0.5*xi : 1
+    # """
+    #
+    # noise_i ="""
+    # g = g_sigma_i ** -0.5 * x : siemens
+    # dx/dt = -x/tau_i_back + tau_i_back**-0.5*xi : 1
+    # """
+
     # --
     # Build networks
     P_i = NeuronGroup(
@@ -178,15 +196,12 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     P_e = NeuronGroup(
         N_e, model=hh,
         threshold='V >= V_thresh',
-        refractory=3*ms,
-        method='exponential_euler'
+        refractory=3*ms
+        # method='exponential_euler' 
     )
-
+    
     # --
     # Syn
-    P_e_back = PoissonGroup(N_e, rates=r_e)
-    P_i_back = PoissonGroup(N_i, rates=r_i)
-
     # Stimulus
     time_stim = time_stim/second
     window = 500/1000.
@@ -203,16 +218,11 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
 
     # --
     # Connections
-    # External
-    C_stim_e = Synapses(P_stim, P_e, model=syn_e_in, 
-        pre='g += w_e', connect='i == j')
+    C_stim_e = Synapses(
+        P_stim, P_e, model=syn_e_in, 
+        pre='g += w_e', connect='i == j'
+    )
 
-    C_back_e = Synapses(P_e_back, P_e, model=syn_e_in, 
-        pre='g += w_e', connect='i == j')
-    # C_back_i = Synapses(P_i_back, P_i, model=syn_e_in,
-    #     pre='g += w_i', connect='i == j')
-
-    # Internal
     C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie')
     C_ie.connect(True, p=0.4)
     
@@ -221,7 +231,7 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     # --
     # Init
     P_i.I = I_currents_wb
-    P_e.I = np.random.uniform(I_e_range[0], I_e_range[1], N_e) * uamp
+    # P_e.I = np.random.uniform(I_e_range[0], I_e_range[1], N_e) * uamp
     P_e.V = V_l
     P_i.v = EL_wb
 
