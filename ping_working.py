@@ -10,29 +10,34 @@ from brian2 import *
 time = 1 * second
 time_step = 0.1 * ms
 
-N_e = 160
-N_i = 40
+N_e = 800
+N_i = 200
 N_stim = 20
 
 k_r_e = 1
 r_e = k_r_e * 10 * Hz
 r_i = r_e
 
-k_stim1 = 100
+k_stim1 = 0
 r_stim1 = k_stim1 * r_e
 
 k_I = 1
-I_e_range = (0.7, 0.9)
-I_i_range = (0.5, 0.7)
+I_e_range = (0.3, 0.3)
+I_i_range = (0.1, 0.1)
+
+delay = 2 * ms
+p_ei = 0.4
+p_ie = 0.4
+p_ii = 1.0
 
 w_e = 0.06 * msiemens
 w_i = 0.02 * msiemens
 w_e_stim = w_e * N_stim
 
-w_ei = 1 / N_e * msiemens
-w_ee = 0 / N_e * msiemens
-w_ie = 0.5 / N_i * msiemens
-w_ii = 0.1 / N_i * msiemens
+w_ei = 1 / (p_ei * N_e) * msiemens
+w_ie = 0.5 / (p_ie * N_i) * msiemens
+w_ii = 0.1 / (p_ii * N_i) * msiemens
+
 w_m = 0 / N_e * msiemens # Read ref 47 to get value
 
 # --
@@ -161,13 +166,13 @@ C_in_i = Synapses(P_i_in, P_i, model=syn_e_in, pre='g += w_i', connect='i == j')
 
 # PING
 C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei')
-C_ei.connect(True, p=0.4)
+C_ei.connect(True, p=p_ei)
 
 C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie')
-C_ie.connect(True, p=0.4)
+C_ie.connect(True, p=p_ie)
 
 C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii')
-C_ii.connect(True, p=1.0)
+C_ii.connect(True, p=p_ii)
 
 # C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei', connect=True)
 # C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie', connect=True)
@@ -189,6 +194,8 @@ P_i.I = np.random.uniform(I_i_range[0], I_i_range[1], N_i) * k_I * uamp
 # Record
 spikes_i = SpikeMonitor(P_i)
 spikes_e = SpikeMonitor(P_e)
+pop_e = PopulationRateMonitor(P_e)
+pop_i = PopulationRateMonitor(P_i)
 voltages_e = StateMonitor(P_e, ('V', 'g_e', 'g_i'), record=range(11, 31))
 voltages_i = StateMonitor(P_i, ('V', 'g_e', 'g_i'), record=range(11, 31))
 
