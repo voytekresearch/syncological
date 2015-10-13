@@ -308,7 +308,7 @@ if __name__ == "__main__":
         "--I_e_range",
         help="ACh tone in E",
         nargs=2,
-        default=[0.1, 0.1]
+        default=[0.45, 0.45]
     )
     args = parser.parse_args()
 
