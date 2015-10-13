@@ -21,7 +21,9 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, seed=42):
 
     r_e = 10 * Hz
     r_i = r_e
-    
+
+    cdelay = 2 * ms
+
     w_e = w_e * N_e * msiemens
     w_i = w_i * N_i * msiemens
     w_ei = w_ei / N_e * msiemens
@@ -150,19 +152,22 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, seed=42):
     # External
     C_stim_e = Synapses(P_stim, P_e, model=syn_e_in, 
                         pre='g += w_e', connect='i == j')
+    C_stim_i = Synapses(P_stim, P_i, model=syn_e_in, 
+                        pre='g += w_e', connect='i == j')
+
     C_back_e = Synapses(P_e_back, P_e, model=syn_e_in, 
                         pre='g += w_e', connect='i == j')
     C_back_i = Synapses(P_i_back, P_i, model=syn_e_in, 
                         pre='g += w_i', connect='i == j')
 
     # Internal
-    C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei')
+    C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei', delay=cdelay)
     C_ei.connect(True, p=0.4)
 
-    C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie')
+    C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie', delay=cdelay)
     C_ie.connect(True, p=0.4)
 
-    C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii', connect=True)
+    C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii', connect=True, delay=cdelay)
 
     # --
     # Init
