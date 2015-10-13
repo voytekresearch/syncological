@@ -10,7 +10,7 @@ from brian2 import *
 from syncological.inputs import gaussian_impulse
 
 
-def model(time, time_stim, w_e, w_i, w_ei, w_ie, I_e_range, I_i_range, seed=42):
+def model(time, time_stim, w_e, w_i, w_ei, w_ie, seed=42):
     """Model some BRAINS!"""
     
     # Network
@@ -39,6 +39,9 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, I_e_range, I_i_range, seed=42):
 
     # --
     # cell biophysics
+    I_e_range = [0.2, 0.3]
+    I_i_range = [0.2, 0.3]
+
     Cm = 1 * uF # /cm2
 
     g_Na = 100 * msiemens
@@ -139,16 +142,18 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, I_e_range, I_i_range, seed=42):
     k = N_stim * int(rate / 2)
 
     ts, idxs = gaussian_impulse(time_stim, t_min, t_max, stdev, N_stim, k, 
-            decimals=decimals)
+                                decimals=decimals)
     P_stim = SpikeGeneratorGroup(N_stim, idxs, ts*second)
 
     # --
     # Connections
     # External
-    C_stim_e = Synapses(P_stim, P_e, model=syn_e_in, pre='g += w_e', connect='i == j')
-
-    C_back_e = Synapses(P_e_back, P_e, model=syn_e_in, pre='g += w_e', connect='i == j')
-    C_back_i = Synapses(P_i_back, P_i, model=syn_e_in, pre='g += w_i', connect='i == j')
+    C_stim_e = Synapses(P_stim, P_e, model=syn_e_in, 
+                        pre='g += w_e', connect='i == j')
+    C_back_e = Synapses(P_e_back, P_e, model=syn_e_in, 
+                        pre='g += w_e', connect='i == j')
+    C_back_i = Synapses(P_i_back, P_i, model=syn_e_in, 
+                        pre='g += w_i', connect='i == j')
 
     # Internal
     C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei')
@@ -158,7 +163,6 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, I_e_range, I_i_range, seed=42):
     C_ie.connect(True, p=0.4)
 
     C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii', connect=True)
-
 
     # --
     # Init
@@ -171,6 +175,7 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, I_e_range, I_i_range, seed=42):
     # Record
     spikes_i = SpikeMonitor(P_i)
     spikes_e = SpikeMonitor(P_e)
+    pop_e = PopulationRateMonitor(P_e)
     voltages_e = StateMonitor(P_e, ('V', 'g_e', 'g_i'), record=range(11, 31))
     voltages_i = StateMonitor(P_i, ('V', 'g_e', 'g_i'), record=range(11, 31))
 
@@ -182,6 +187,7 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, I_e_range, I_i_range, seed=42):
     return {
         'spikes_i' : spikes_i,
         'spikes_e' : spikes_e,
+        'pop_e' : pop_e,
         'voltages_e' : voltages_e,
         'voltages_i' : voltages_i
     }
@@ -236,18 +242,6 @@ if __name__ == "__main__":
         default=0.5,
         type=float
     )
-    parser.add_argument(
-        "--I_e_range",
-        help="ACh tone in E",
-        nargs=2,
-        default=[0.7, 0.9]
-    )
-    parser.add_argument(
-        "--I_i_range",
-        help="ACh tone in I",
-        nargs=2,
-        default=[0.5, 0.7]
-    )
     args = parser.parse_args()
 
     # --
@@ -260,12 +254,9 @@ if __name__ == "__main__":
     w_ei = args.w_ei 
     w_ie = args.w_ie 
 
-    I_e_range = [float(x) for x in args.I_e_range]
-    I_i_range = [float(x) for x in args.I_i_range]
-
     # --
     # Run!
-    res = model(time, time_stim, w_e, w_i, w_ei, w_ie, I_e_range, I_i_range)
+    res = model(time, time_stim, w_e, w_i, w_ei, w_ie)
 
     # -- 
     # Analysis

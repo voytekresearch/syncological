@@ -13,7 +13,7 @@ from brian2 import *
 from syncological.inputs import gaussian_impulse
 
 
-def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
+def model(time, time_stim, w_e, w_i, w_ie, seed=42):
     """Model some BRAINS!"""
 
     # Network
@@ -44,8 +44,9 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     # --
     # cell biophysics   
     # WB (I)
-    I_currents_wb = 1.1 # * uamp
-    I_currents_wb = np.random.normal(I_currents_wb, 0.01, N_i) * uamp
+    I_currents_i = 1.1 # * uamp
+    I_currents_i = np.random.normal(I_currents_i, 0.01, N_i) * uamp
+    I_currents_e = 0.25 * uamp
 
     # After-hyperpolaization (AHP)
     ahp = 5
@@ -141,7 +142,8 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
         I_m = w_m * w * (V_K - V) : amp
         dw/dt = (w_inf - w) / tau_w/ms : 1
         w_inf = 1 / (1 + exp(-1 * (V/mV + 35) / 10)) : 1
-        tau_w = 400 / ((3.3 * exp((V/mV + 35)/20)) + (exp(-1 * (V/mV + 35) / 20))) : 1
+        tau_w = 400 / ((3.3 * exp((V/mV + 35)/20)) + 
+                (exp(-1 * (V/mV + 35) / 20))) : 1
     """ + """
         I_syn = g_e * (V_e - V) +
                 g_i * (V_i - V) : amp
@@ -172,7 +174,7 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
         N_i,
         model=wb,
         threshold='v >= V_thresh',
-        refractory=3*ms,
+        refractory=2*ms,
         method='exponential_euler'
     )
     P_e = NeuronGroup(
@@ -184,8 +186,8 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
 
     # --
     # Syn
-    P_e_back = PoissonGroup(N_e, rates=r_e)
-    P_i_back = PoissonGroup(N_i, rates=r_i)
+    # P_e_back = PoissonGroup(N_e, rates=r_e)
+    # P_i_back = PoissonGroup(N_i, rates=r_i)
 
     # Stimulus
     time_stim = time_stim/second
@@ -207,8 +209,8 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     C_stim_e = Synapses(P_stim, P_e, model=syn_e_in, 
         pre='g += w_e', connect='i == j')
 
-    C_back_e = Synapses(P_e_back, P_e, model=syn_e_in, 
-        pre='g += w_e', connect='i == j')
+    # C_back_e = Synapses(P_e_back, P_e, model=syn_e_in, 
+    #     pre='g += w_e', connect='i == j')
     # C_back_i = Synapses(P_i_back, P_i, model=syn_e_in,
     #     pre='g += w_i', connect='i == j')
 
@@ -216,12 +218,13 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie')
     C_ie.connect(True, p=0.4)
     
-    C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += gSyn_wb', connect=True)
+    C_ii = Synapses(P_i, P_i, model=syn_i, 
+                    pre='g += gSyn_wb', connect=True)
     
     # --
     # Init
-    P_i.I = I_currents_wb
-    P_e.I = np.random.uniform(I_e_range[0], I_e_range[1], N_e) * uamp
+    P_i.I = I_currents_i
+    P_e.I = I_currents_e
     P_e.V = V_l
     P_i.v = EL_wb
 
@@ -229,6 +232,7 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     # Record
     spikes_i = SpikeMonitor(P_i)
     spikes_e = SpikeMonitor(P_e)
+    pop_e = PopulationRateMonitor(P_e)
     voltages_e = StateMonitor(P_e, ('V', 'g_e', 'g_i'), record=range(11, 31))
     voltages_i = StateMonitor(P_i, ('v', 'g_i'), record=range(11, 31))
 
@@ -240,6 +244,7 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
     return {
         'spikes_i' : spikes_i,
         'spikes_e' : spikes_e,
+        'pop_e' : pop_e,
         'voltages_e' : voltages_e,
         'voltages_i' : voltages_i
     }
@@ -248,6 +253,7 @@ def model(time, time_stim, w_e, w_i, w_ie, I_e_range, seed=42):
 def analyze(result):
     pass
     
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="A sparse ING E-I model.",
@@ -265,8 +271,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--time_stim",
-        help="Simulus time (in ms)",
-        default=1.5,
+        help="Simulus times (in ms)",
+        nargs = '+',
+        default=[1.5],
         type=float
     )
     parser.add_argument(
@@ -287,12 +294,6 @@ if __name__ == "__main__":
         default=0.1,
         type=float
     )
-    parser.add_argument(
-        "--I_e_range",
-        help="ACh tone in E",
-        nargs=2,
-        default=[0.1, 0.1]
-    )
     args = parser.parse_args()
 
     # --
@@ -304,11 +305,9 @@ if __name__ == "__main__":
     w_i = args.w_i
     w_ie = args.w_ie 
 
-    I_e_range = [float(x) for x in args.I_e_range]
-
     # --
     # Run!
-    res = model(time, time_stim, w_e, w_i, w_ie, I_e_range)
+    res = model(time, time_stim, w_e, w_i, w_ie)
 
     # -- 
     # Analysis
