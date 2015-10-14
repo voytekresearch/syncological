@@ -64,13 +64,10 @@ args = parser.parse_args()
 time = args.time * second
 time_stim = args.time_stim * second
 
-w_e = args.w_e
-w_i = args.w_i
-w_ie = args.w_ie
-
 # --
 # Run!
-res = model(time, time_stim, w_e, w_i, w_ie)
+res = model(time, time_stim, args.w_e, args.w_i, 
+            args.w_ie, seed=args.seed)
 
 # --
 # Analysis
