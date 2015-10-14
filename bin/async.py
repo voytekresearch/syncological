@@ -54,6 +54,11 @@ parser.add_argument(
     default=0.5,
     type=float
 )
+parser.add_argument(
+    "--seed",
+    help="Seed value",
+    default=None
+)
 args = parser.parse_args()
 
 # --

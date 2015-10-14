@@ -15,7 +15,7 @@ from syncological.inputs import gaussian_impulse
 
 
 def model(time, time_stim, w_e=0.06, w_i=0.02, w_ei=1.0, w_ie=0.5, w_ii=0.1, 
-          seed=42):
+          seed=None):
     """Model some BRAINS!"""
 
     # Network

@@ -13,7 +13,7 @@ from brian2 import *
 from syncological.inputs import gaussian_impulse
 
 
-def model(time, time_stim, w_e, w_i, w_ie, seed=42):
+def model(time, time_stim, w_e, w_i, w_ie, seed=None):
     """Model some BRAINS!"""
 
     # Network
