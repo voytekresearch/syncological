@@ -25,6 +25,8 @@ def model(time, time_stim, w_e, w_i, w_ie, seed=42):
     r_e = 10 * Hz
     r_i = r_e
 
+    cdelay = 2 * ms
+
     w_e = w_e * msiemens
     w_i = w_i * msiemens
     w_ie = w_ie / N_i * msiemens
@@ -221,7 +223,7 @@ def model(time, time_stim, w_e, w_i, w_ie, seed=42):
     )
 
     # Internal
-    C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie')
+    C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie', delay=cdelay)
     C_ie.connect(True, p=0.4)
     C_ii = Synapses(P_i, P_i, model=syn_i,pre='g += gSyn_wb', connect=True)
 
@@ -249,64 +251,3 @@ def model(time, time_stim, w_e, w_i, w_ie, seed=42):
 
 def analyze(result):
     pass
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="A sparse ING E-I model.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument(
-        "name",
-        help="Name of exp, used to save results as hdf5."
-    )
-    parser.add_argument(
-        "-t", "--time",
-        help="Simulation run time (in ms)",
-        default=2,
-        type=float
-    )
-    parser.add_argument(
-        "--time_stim",
-        help="Simulus times (in ms)",
-        nargs='+',
-        default=[1.5],
-        type=float
-    )
-    parser.add_argument(
-        "--w_e",
-        help="Input weight to E (msiemens)",
-        default=0.06,
-        type=float
-    )
-    parser.add_argument(
-        "--w_i",
-        help="Input weight to E (msiemens)",
-        default=0.02,
-        type=float
-    )
-    parser.add_argument(
-        "--w_ie",
-        help="Weight I -> E (msiemens)",
-        default=0.1,
-        type=float
-    )
-    args = parser.parse_args()
-
-    # --
-    # argvs
-    time = args.time * second
-    time_stim = args.time_stim * second
-
-    w_e = args.w_e
-    w_i = args.w_i
-    w_ie = args.w_ie
-
-    # --
-    # Run!
-    res = model(time, time_stim, w_e, w_i, w_ie)
-
-    # --
-    # Analysis
-    # TODO
-    analyze(res)

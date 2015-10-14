@@ -130,16 +130,16 @@ V_thresh = 20 * mV
 P_e = NeuronGroup(
     N_e, model=hh,
     threshold='V >= V_thresh',
-    refractory=3*ms,
-    method='exponential_euler'
+    refractory=3*ms
+    # method='exponential_euler'
 )
 
 P_i = NeuronGroup(
     N_i,
     model=hh,
     threshold='V >= V_thresh',
-    refractory=3*ms,
-    method='exponential_euler'
+    refractory=1*ms
+    # method='exponential_euler'
 )
 P_e_in = PoissonGroup(N_e, rates=r_e)
 P_i_in = PoissonGroup(N_i, rates=r_i)
