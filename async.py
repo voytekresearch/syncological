@@ -47,8 +47,8 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, seed=None):
 
     # --
     # cell biophysics
-    I_e_range = [0.01, 0.1]
-    I_i_range = [0.01, 0.1]
+    I_e = [0.01, 0.1]
+    I_i = [0.01, 0.1]
 
     Cm = 1 * uF  # /cm2
 
@@ -143,8 +143,8 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, seed=None):
     )
     P_e.V = V_l
     P_i.V = V_l
-    P_e.I = np.random.uniform(I_e_range[0], I_e_range[1], N_e) * uamp
-    P_i.I = np.random.uniform(I_i_range[0], I_i_range[1], N_i) * uamp
+    P_e.I = np.random.uniform(I_e[0], I_e[1], N_e) * uamp
+    P_i.I = np.random.uniform(I_i[0], I_i[1], N_i) * uamp
 
     P_e_back = PoissonGroup(N_e, rates=r_e)
     P_i_back = PoissonGroup(N_i, rates=r_i)

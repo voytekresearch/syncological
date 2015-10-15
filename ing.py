@@ -17,7 +17,8 @@ from fakespikes import util as futil
 import pyspike as spk
 
 
-def model(time, time_stim, rate_stim, w_e, w_i, w_ie, seed=None):
+def model(time, time_stim, rate_stim, w_e, w_i, w_ie, I_e, I_i_sigma=0.01,
+        seed=None):
     """Model some BRAINS!"""
 
     time = time * second
@@ -51,9 +52,10 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ie, seed=None):
     # --
     # cell biophysics
     # WB (I)
-    I_currents_i = 1.1  # * uamp
-    I_currents_i = np.random.normal(I_currents_i, 0.01, N_i) * uamp
-    I_currents_e = 0.25 * uamp
+    I_i = 1.1  # * uamp
+    I_i = np.random.normal(I_i, I_i_sigma, N_i) * uamp
+    if I_e is None:
+        I_e = (0.25, .25)
 
     # After-hyperpolaization (AHP)
     ahp = 5
@@ -202,8 +204,8 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ie, seed=None):
         refractory=3 * ms,
         method='exponential_euler'
     )
-    P_i.I = I_currents_i
-    P_e.I = I_currents_e
+    P_i.I = I_i
+    P_e.I = np.random.uniform(I_e[0], I_e[1], N_e) * uamp
     P_e.V = V_l
     P_i.v = EL_wb
 

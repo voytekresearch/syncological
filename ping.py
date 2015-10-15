@@ -18,7 +18,8 @@ from fakespikes import util as futil
 import pyspike as spk
 
 
-def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, seed=None):
+def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, I_e, I_i, 
+        seed=None):
     """Model some BRAINS!"""
 
     time = time * second
@@ -32,9 +33,11 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, seed=None):
 
     r_e = 10 * Hz
     r_i = r_e
-
-    I_e_range = (0.3, 0.3)
-    I_i_range = (0.1, 0.1)
+    
+    if I_e is None:
+        I_e = (0.3, 0.3)
+    if I_i is None:
+        I_i = (0.1, 0.1)
 
     delay = 2 * ms
     p_ei = 0.4
@@ -149,11 +152,11 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, seed=None):
 
     P_e.V = V_l
     P_i.V = V_l
-    P_e.I = np.random.uniform(I_e_range[0], I_e_range[1], N_e) * uamp
-    P_i.I = np.random.uniform(I_i_range[0], I_i_range[1], N_i) * uamp
+    P_e.I = np.random.uniform(I_e[0], I_e[1], N_e) * uamp
+    P_i.I = np.random.uniform(I_i[0], I_i[1], N_i) * uamp
 
     P_e_back = PoissonGroup(N_e, rates=r_e)
-    P_i_back = PoissonGroup(N_i, rates=r_i)
+        P_i_back = PoissonGroup(N_i, rates=r_i)
 
     # --
     # Stimulus

@@ -66,6 +66,16 @@ parser.add_argument(
     type=float
 )
 parser.add_argument(
+    "--I_e",
+    help="E population drive (default: 0.3 0.3)",
+    nargs=2,
+)
+parser.add_argument(
+    "--I_i",
+    help="I population drive (default: 0.1 0.1)",
+    nargs=2,
+)
+parser.add_argument(
     "--seed",
     help="Seed value",
     default=None
