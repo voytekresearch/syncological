@@ -10,29 +10,35 @@ from brian2 import *
 from syncological.inputs import gaussian_impulse
 
 
-def model(time, time_stim, w_e, w_i, w_ei, w_ie, seed=None):
+def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, seed=None):
+    # def model(time, stim, w_e, w_i, w_ei, w_ie, seed=None):
     """Model some BRAINS!"""
-    
+
+    time = time * second
+    time_stim = time_stim * second
+
     # Network
-    N = 1000 
-    N_e = int(N * 0.8) 
+    N = 1000
+    N_e = int(N * 0.8)
     N_i = int(N * 0.2)
     N_stim = int(N * 0.2)
 
     r_e = 10 * Hz
     r_i = r_e
 
-    cdelay = 2 * ms
+    delay = 2 * ms
+    p_ei = 0.4
+    p_ie = 0.4
+    p_ii = 1.0
 
-    w_e = w_e * N_e * msiemens
-    w_i = w_i * N_i * msiemens
-    w_ei = w_ei / N_e * msiemens
-    w_ie = w_ie / N_i * msiemens
-    
-    w_ee = 0 / N_e * msiemens
-    w_ii = 0.1 / N_i * msiemens
-    w_m = 0 / N_e * msiemens # Read ref 47 to get value
-    
+    w_e = w_e * msiemens
+    w_i = w_i * msiemens
+    w_ei = w_ei / (p_ei * N_e) * msiemens
+    w_ie = w_ie / (p_ie * N_i) * msiemens
+
+    w_ii = 0.0 / N_i * msiemens
+    w_m = 0.0 * msiemens  # Read ref 47 to get value
+
     # --
     # Model
     np.random.seed(seed)
@@ -41,10 +47,10 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, seed=None):
 
     # --
     # cell biophysics
-    I_e_range = [0.2, 0.3]
-    I_i_range = [0.2, 0.3]
+    I_e_range = [0.01, 0.1]
+    I_i_range = [0.01, 0.1]
 
-    Cm = 1 * uF # /cm2
+    Cm = 1 * uF  # /cm2
 
     g_Na = 100 * msiemens
     g_K = 80 * msiemens
@@ -65,7 +71,7 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, seed=None):
     V_i = -80 * mV
     V_e = 0 * mV
 
-    # -- 
+    # --
     # Eqs
     hh = """
         dV/dt = (I_Na + I_K + I_l + I_m + I_syn + I) / Cm : volt
@@ -88,18 +94,25 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, seed=None):
         w_inf = 1 / (1 + exp(-1 * (V/mV + 35) / 10)) : 1
         tau_w = 400 / ((3.3 * exp((V/mV + 35)/20)) + (exp(-1 * (V/mV + 35) / 20))) : 1
     """ + """
-        I_syn = g_e * (V_e - V) +
-                g_i * (V_i - V) : amp
-
-        g_e : siemens
-        g_i : siemens
+    I_syn = g_e * (V_e - V) +
+            g_i * (V_i - V) : amp
+    g_e : siemens
+    g_i : siemens
     """ + """
-        I : amp
+    I_stim = g_s * (V_e - V) : amp
+    g_s : siemens
+    """ + """
+    I : amp
     """
 
     syn_e_in = """
-        dg/dt = -g / tau_d_ampa : siemens
-        g_e_post = g : siemens (summed)
+    dg/dt = -g / tau_d_ampa : siemens
+    g_e_post = g : siemens (summed)
+    """
+
+    syn_e_stim = """
+    dg/dt = -g / tau_d_ampa : siemens
+    g_s_post = g : siemens (summed)
     """
 
     syn_e = """
@@ -117,7 +130,7 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, seed=None):
     P_e = NeuronGroup(
         N_e, model=hh,
         threshold='V >= V_thresh',
-        refractory=3*ms,
+        refractory=3 * ms,
         method='exponential_euler'
     )
 
@@ -125,63 +138,61 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, seed=None):
         N_i,
         model=hh,
         threshold='V >= V_thresh',
-        refractory=3*ms,
+        refractory=3 * ms,
         method='exponential_euler'
     )
-
-    # Background
-    P_e_back = PoissonGroup(N_e, rates=r_e)
-    P_i_back = PoissonGroup(N_i, rates=r_i)
-
-    # Stimulus
-    time_stim = time_stim/second
-    window = 500/1000.
-    t_min = time_stim - window / 2
-    t_max = time_stim + window / 2
-    stdev = 100/1000. # 100 ms
-
-    rate = 5 # Hz
-    k = N_stim * int(rate / 2)
-
-    ts, idxs = gaussian_impulse(time_stim, t_min, t_max, stdev, N_stim, k, 
-                                decimals=decimals)
-    P_stim = SpikeGeneratorGroup(N_stim, idxs, ts*second)
-
-    # --
-    # Connections
-    # External
-    C_stim_e = Synapses(P_stim, P_e, model=syn_e_in, 
-                        pre='g += w_e', connect='i == j')
-    C_stim_i = Synapses(P_stim, P_i, model=syn_e_in, 
-                        pre='g += w_e', connect='i == j')
-
-    C_back_e = Synapses(P_e_back, P_e, model=syn_e_in, 
-                        pre='g += w_e', connect='i == j')
-    C_back_i = Synapses(P_i_back, P_i, model=syn_e_in, 
-                        pre='g += w_i', connect='i == j')
-
-    # Internal
-    C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei', delay=cdelay)
-    C_ei.connect(True, p=0.4)
-
-    C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie', delay=cdelay)
-    C_ie.connect(True, p=0.4)
-
-    C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii', connect=True, delay=cdelay)
-
-    # --
-    # Init
     P_e.V = V_l
     P_i.V = V_l
     P_e.I = np.random.uniform(I_e_range[0], I_e_range[1], N_e) * uamp
     P_i.I = np.random.uniform(I_i_range[0], I_i_range[1], N_i) * uamp
 
+    P_e_back = PoissonGroup(N_e, rates=r_e)
+    P_i_back = PoissonGroup(N_i, rates=r_i)
+
+    # --
+    # Stimulus
+    time_stim = time_stim / second
+    window = 500 / 1000.
+    t_min = time_stim - window / 2
+    t_max = time_stim + window / 2
+    stdev = 100 / 1000.  # 100 ms
+
+    rate = 5  # Hz
+    k = N_stim * int(rate / 2)
+
+    ts, idxs = gaussian_impulse(time_stim, t_min, t_max, stdev, N_stim, k,
+                                decimals=decimals)
+    P_stim = SpikeGeneratorGroup(N_stim, idxs, ts * second)
+
+    # --
+    # Connections
+    # External
+    C_stim_e = Synapses(P_stim, P_e, model=syn_e_stim,
+                        pre='g += w_e', connect='i == j')
+    C_back_e = Synapses(P_e_back, P_e, model=syn_e_in, pre='g += w_e',
+                        connect='i == j')
+    C_back_i = Synapses(P_i_back, P_i, model=syn_e_in, pre='g += w_i',
+                        connect='i == j')
+
+    # Internal
+    C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei', delay=delay)
+    C_ei.connect(True, p=p_ei)
+
+    C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie', delay=delay)
+    C_ie.connect(True, p=p_ie)
+
+    C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii', delay=delay)
+    C_ii.connect(True, p=p_ii)
+
     # --
     # Record
     spikes_i = SpikeMonitor(P_i)
     spikes_e = SpikeMonitor(P_e)
+    spikes_stim = SpikeMonitor(P_stim)
     pop_e = PopulationRateMonitor(P_e)
-    voltages_e = StateMonitor(P_e, ('V', 'g_e', 'g_i'), record=range(11, 31))
+    pop_i = PopulationRateMonitor(P_i)
+    voltages_e = StateMonitor(
+        P_e, ('V', 'g_e', 'g_i', 'g_s'), record=range(11, 31))
     voltages_i = StateMonitor(P_i, ('V', 'g_e', 'g_i'), record=range(11, 31))
 
     # --
@@ -190,14 +201,11 @@ def model(time, time_stim, w_e, w_i, w_ei, w_ie, seed=None):
     run(time, report='text')
 
     return {
-        'spikes_i' : spikes_i,
-        'spikes_e' : spikes_e,
-        'pop_e' : pop_e,
-        'voltages_e' : voltages_e,
-        'voltages_i' : voltages_i
+        'spikes_i': spikes_i,
+        'spikes_e': spikes_e,
+        'spikes_stim': spikes_stim,
+        'pop_e': pop_e,
+        'pop_i': pop_i,
+        'voltages_e': voltages_e,
+        'voltages_i': voltages_i
     }
-
-
-def analyze(result):
-    pass
- 

@@ -10,8 +10,8 @@ from __future__ import division
 import argparse
 import numpy as np
 from brian2 import *
-from syncological.ing import model, analyze
-
+from syncological.ing import model, save_result
+from syncological.ping import analyze_result
 
 parser = argparse.ArgumentParser(
     description="A sparse ING E-I model.",
@@ -28,10 +28,16 @@ parser.add_argument(
     type=float
 )
 parser.add_argument(
-    "--time_stim",
+    "--stim",
     help="Simulus times (in ms)",
     nargs='+',
     default=[1.5],
+    type=float
+)
+parser.add_argument(
+    "--rate",
+    help="Stimulus firing rate (approx)",
+    default=5,
     type=float
 )
 parser.add_argument(
@@ -49,7 +55,7 @@ parser.add_argument(
 parser.add_argument(
     "--w_ie",
     help="Weight I -> E (msiemens)",
-    default=0.1,
+    default=0.5,
     type=float
 )
 parser.add_argument(
@@ -59,17 +65,16 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-# --
-# argvs
-time = args.time * second
-time_stim = args.time_stim * second
+try:
+    seed = int(args.seed)
+except TypeError:
+    seed = None
 
-# --
-# Run!
-res = model(time, time_stim, args.w_e, args.w_i, 
-            args.w_ie, seed=args.seed)
-
-# --
-# Analysis
-# TODO
-analyze(res)
+result = model(
+    args.time, 
+    args.stim, args.rate,
+    args.w_e, args.w_i, args.w_ie,
+    seed=seed
+)
+save_result(args.name, result)
+analysis = analyze_result(args.name, args.stim, result, fs=10000, save=True)
