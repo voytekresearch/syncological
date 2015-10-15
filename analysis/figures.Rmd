@@ -1,0 +1,160 @@
+---
+title: "Results"
+author: "Erik J Peterson"
+date: "8-28-2015"
+output:
+  html_document:
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+---
+
+```{r helper_fns, echo=FALSE, fig.width=6, fig.height=4, echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape)
+library(png)
+library(psd)
+library(tidyr)
+library(doParallel)
+library(bspec)
+registerDoParallel(cores=10)
+
+path <- "/home/ejp/src/syncological/data"
+
+load.ing.analysis <- function(path, rates, w_ies, js){
+  df <- NULL
+  for(r_s in rates){
+    for(w_ie in w_ies){
+      for(j in js){
+          try({
+            # rate-{1}_ie-{2}_j-{3}
+            name <- paste("rate-", as.character(r_s), 
+                          "_ie-", as.character(w_ie),
+                          "_j-", as.character(j), 
+                          "_analysis.csv", sep="")
+            dat <- read.csv(paste(path, name, sep=""), header=FALSE)
+            colnames(dat) <- c("stat", "x")
+            dat["rate"] <- rep(r_s, nrow(dat))
+            dat["w_ie"] <- rep(w_ie, nrow(dat))
+            dat["j"] <- rep(j, nrow(dat))
+            df <- rbind(df, dat)  
+          })  
+      }
+    }
+  }
+  df
+}
+
+load.ping.analysis <- function(path, rates, w_ies, w_eis, js){
+  df <- NULL
+  for(r_s in rates){
+    for(w_ie in w_ies){
+      for(w_ei in w_eis){
+      for(j in js){
+          try({
+            # rate-{1}_ie-{2}_j-{3}
+            name <- paste("rate-", as.character(r_s),
+                          "_ei-", as.character(w_ei),
+                          "_ie-", as.character(w_ie),
+                          "_j-", as.character(j), 
+                          "_analysis.csv", sep="")
+            dat <- read.csv(paste(path, name, sep=""), header=FALSE)
+            colnames(dat) <- c("stat", "x")
+            dat["rate"] <- rep(r_s, nrow(dat))
+            dat["w_ei"] <- rep(w_ie, nrow(dat))
+            dat["w_ei"] <- rep(w_ie, nrow(dat))
+            dat["j"] <- rep(j, nrow(dat))
+            df <- rbind(df, dat)  
+          })  
+      }
+    }
+  }
+  df
+}
+
+load.async.analysis <- function(path, rates, js){
+  df <- NULL
+  for(r_s in rates){
+    for(j in js){
+      try({
+        # rate-{1}_ie-{2}_j-{3}
+        name <- paste("rate-", as.character(r_s), 
+                      "_j-", as.character(j), 
+                      "_analysis.csv", sep="")
+        dat <- read.csv(paste(path, name, sep=""), header=FALSE)
+        colnames(dat) <- c("stat", "x")
+        dat["rate"] <- rep(r_s, nrow(dat))
+        dat["j"] <- rep(j, nrow(dat))
+        df <- rbind(df, dat)  
+        })  
+      }
+    }
+  }
+  df
+}
+```
+
+```{r load_ing, echo=FALSE, warning=FALSE, message=FALSE}
+rates <- c(5, 10, 30)
+w_ies <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.52, 0.54, 0.56, 0.58, 0.60, 0.70, 0.8, 0.9, 1.0)
+js <- 1:20
+
+tmppath <- paste(path, "/ing_exp1/", sep="")
+ing1 <- load.ing.analysis(tmppath, rates, w_ies, js)
+```
+
+```{r load_ping, echo=FALSE, warning=FALSE, message=FALSE}
+rates <- c(5, 10, 30)
+w_eis <- c(1.0, 1.01, 1.02, 1.03, 1.04, 1.04, 1.06, 1.08, 1.09, 1.1, 1.2, 1.3, 1.4, 1.5)
+w_ies <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.52, 0.54, 0.56, 0.58, 0.60, 0.70, 0.8, 0.9, 1.0)
+js <- 1:20
+
+tmppath <- paste(path, "/ping_exp1/", sep="")
+ping1 <- load.ping.analysis(tmppath, rates, w_eis, w_ies, js)
+```
+
+```{r load_async, echo=FALSE, warning=FALSE, message=FALSE}
+rates <- c(5, 10, 30)
+js <- 1:20
+
+tmppath <- paste(path, "/async_exp1/", sep="")
+async1 <- load.async.analysis(tmppath, rates, js)
+```
+
+```{r plot_ing}
+ing1 %>%
+#   filter(stat %in% c("kappa_pre_e", "kappa_e")) %>%
+  ggplot(aes(x=w_ie, y=x, group=w_ie, color=stat)) + 
+    geom_point() + 
+    facet_grid(stat~rate, scales = "free") +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0))
+```
+
+
+```{r plot_ping}
+# ie
+ping1 %>%
+  select(-w_ei) %>%
+  filter(ping1, stat %in% c("fano_pre_e", "fano_e")) %>%
+  ggplot(aes(x=w_ie, y=x, group=w_ie, color=stat)) + 
+  geom_point() + 
+  facet_grid(rate~.) +
+  theme_classic() -> p1
+
+ping1 %>%
+  select(-w_ie) %>%
+  filter(ping1, stat %in% c("fano_pre_e", "fano_e")) %>%
+  ggplot(aes(x=w_ie, y=x, group=w_ei, color=stat)) + 
+  geom_point() + 
+  facet_grid(rate~.) +
+  theme_classic() -> p2
+
+print(p1)
+print(p2)
+```
+
