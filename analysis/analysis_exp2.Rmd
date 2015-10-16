@@ -1,0 +1,165 @@
+---
+title: "Exp2 - I drive effect"
+author: "Erik J Peterson"
+date: ""
+output: html_document
+---
+
+```{r helper_fns, echo=FALSE, fig.width=6, fig.height=4, echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape)
+library(png)
+library(psd)
+library(tidyr)
+library(doParallel)
+library(bspec)
+registerDoParallel(cores=10)
+
+source("loaders.R")
+path <- "/home/ejp/src/syncological/data"
+```
+
+```{r load_ing2}
+I_es <- c("0.1", "0.2", "0.3", "0.4")
+js <- 1:20
+
+tmppath <- paste(path, "/ing_exp2/", sep="")
+ing2 <- load.ing2.analysis(tmppath, I_es, js)
+```
+
+```{r load_ping2}
+I_es <- c("0.3", "0.4", "0.5", "0.6")
+js <- 1:20
+
+tmppath <- paste(path, "/ping_exp2/", sep="")
+ping2 <- load.ing2.analysis(tmppath, I_es, js) # works for ping too (in this case)
+```
+
+```{r load_ing3}
+I_i_sigmas <-c("0.01", "0.02", "0.04", "0.06", "0.08", "0.1")
+js <- 1:20
+
+tmppath <- paste(path, "/ing_exp3/", sep="")
+ing3 <- load.ing3.analysis(tmppath, I_i_sigmas, js)
+```
+
+
+# Analysis
+
+## ING and I_e
+
+```{r}
+ing2 %>%
+  filter(stat %in% c("isi_e")) %>%
+  ggplot(aes(x=I_e, y=x)) + 
+#     geom_boxplot() + 
+    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("") +
+    ylab("ISI_e") -> p1
+
+ing2 %>%
+  filter(stat %in% c("kappa_i")) %>%
+  ggplot(aes(x=I_e, y=x)) + 
+#     geom_boxplot() + 
+    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("") +
+    ylab("Kappa_i") -> p2
+
+ing2 %>%
+  filter(stat %in% c("kappa_e")) %>%
+  ggplot(aes(x=I_e, y=x)) + 
+#     geom_boxplot() + 
+    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("E drive (uamp)") +
+    ylab("Kappa_e") -> p3
+
+grid.arrange(p1, p2, p3, nrow=1)
+```
+
+## PING and I_e
+
+```{r}
+ping2 %>%
+  filter(stat %in% c("isi_e")) %>%
+  ggplot(aes(x=I_e, y=x)) + 
+#     geom_boxplot() + 
+    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("") +
+    ylab("ISI_e") -> p4
+print(p4)
+
+ping2 %>%
+  filter(stat %in% c("kappa_i")) %>%
+  ggplot(aes(x=I_e, y=x)) + 
+#     geom_boxplot() + 
+    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("") +
+    ylab("Kappa_i") -> p5
+print(p5)
+
+ping2 %>%
+  filter(stat %in% c("kappa_e")) %>%
+  ggplot(aes(x=I_e, y=x)) + 
+#     geom_boxplot() + 
+    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("E drive (uamp)") +
+    ylab("Kappa_e") -> p6
+print(p3)
+
+grid.arrange(p5, p6, p4, nrow=1)
+```
+
+## ING and I_i_sigma
+
+```{r}
+ing3 %>%
+  filter(stat %in% c("isi_e")) %>%
+  ggplot(aes(x=I_i_sigma, y=x)) + 
+#     geom_boxplot() + 
+    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("") +
+    ylab("ISI_e") -> p7
+print(p7)
+
+ing3 %>%
+  filter(stat %in% c("kappa_i")) %>%
+  ggplot(aes(x=I_i_sigma, y=x)) + 
+#     geom_boxplot() + 
+    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("") +
+    ylab("Kappa_i") -> p8
+print(p8)
+
+ing3 %>%
+  filter(stat %in% c("kappa_e")) %>%
+  ggplot(aes(x=I_i_sigma, y=x)) + 
+#     geom_boxplot() + 
+    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("I drive variance (uamp)") +
+    ylab("Kappa_e") -> p9
+print(p9)
+
+grid.arrange(p8, p9, p7, nrow=1)
+```

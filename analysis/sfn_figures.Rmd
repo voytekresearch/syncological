@@ -1,0 +1,26 @@
+---
+title: "SFN Figures"
+author: "Erik J Peterson"
+date: ""
+output: html_document
+---
+
+
+```{r helper_fns, echo=FALSE, fig.width=6, fig.height=4, echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape)
+library(png)
+library(psd)
+library(tidyr)
+library(doParallel)
+library(bspec)
+registerDoParallel(cores=10)
+
+source("loaders.R")
+path <- "/home/ejp/src/syncological/data"
+```
+

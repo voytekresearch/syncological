@@ -1,0 +1,103 @@
+---
+title: "Power and synch"
+author: "Erik J Peterson"
+date: "October 15, 2015"
+output: html_document
+---
+
+
+```{r helper_fns, echo=FALSE, fig.width=6, fig.height=4, echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape)
+library(png)
+library(psd)
+library(tidyr)
+library(doParallel)
+library(bspec)
+registerDoParallel(cores=10)
+
+source("loaders.R")
+path <- "/home/ejp/src/syncological/data"
+```
+
+```{r load_ing1, echo=FALSE, warning=FALSE, message=FALSE}
+# rates <- c(5, 10, 30)
+rates <- c(5)
+
+# all
+# w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.52", "0.54", 
+#            "0.56", "0.58", "0.60", "0.70", "0.8", "0.9", "1.0")
+# Even sampling
+w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0")
+js <- 1:20
+
+tmppath <- paste(path, "/ing_exp1/", sep="")
+ing1.poprate.e <- load.ing1.poprates(tmppath, "e", rates, w_ies, js)
+```
+```{r}
+ing1.poprate.e %>%
+  ggplot(aes(x=sample_time, y=poprate)) + geom_line() + facet_grid(w_ie~.) + theme_classic()
+```
+
+```{r load_ing, echo=FALSE, warning=FALSE, message=FALSE}
+# rates <- c(5, 10, 30)
+rates <- c(5)
+
+# all
+# w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.52", "0.54", 
+#            "0.56", "0.58", "0.60", "0.70", "0.8", "0.9", "1.0")
+# Even sampling
+w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0")
+js <- 1:20
+
+tmppath <- paste(path, "/ing_exp1/", sep="")
+ing1 <- load.ing1.analysis(tmppath, rates, w_ies, js)
+```
+
+```{r}
+ing1 %>%
+  group_by(stat, rate, w_ie) %>%
+  summarise(M=mean(x), SD=sd(x)) ->
+  ing1.m
+```
+
+```{r}
+ing1.spec <- NULL
+for(w_ie in w_ies){
+  mask <- ing1.poprate.e$w_ie == w_ie
+  prate <- ing1.poprate.e[mask,'poprate']
+  
+  spec <- pspectrum(prate, x.frqsamp=10000)
+  ing1.spec <- rbind(
+    ing1.spec,
+    data.frame(
+      spec=spec$spec, 
+      freq=spec$freq, 
+      w_ie=rep(w_ie, length(spec$spec))
+      )
+    )
+  }
+```
+```{r}
+ing1.power <- NULL
+for(w_ie_i in w_ies){
+  sel <- filter(ing1.spec, w_ie == w_ie_i, freq < 20, freq < 30)
+  print(sel$spec)
+  ing1.power <- rbind(
+    ing1.power,
+    data.frame(
+      power = mean(sel$spec),
+      w_ie = w_ie_i 
+    )  
+  )
+}
+```
+
+```{r}
+ing1.spec %>%
+  ggplot(aes(x=freq, y=spec, color=w_ie)) + geom_line() + coord_cartesian(xlim=c(2,40)) + theme_classic()
+```

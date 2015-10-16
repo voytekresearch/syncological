@@ -1,0 +1,218 @@
+---
+title: "Exp2 - I drive effect"
+author: "Erik J Peterson"
+date: ""
+output:
+  html_document:
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+---
+
+```{r helper_fns, echo=FALSE, fig.width=6, fig.height=4, echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape)
+library(png)
+library(psd)
+library(tidyr)
+library(doParallel)
+library(bspec)
+registerDoParallel(cores=10)
+
+source("loaders.R")
+path <- "/home/ejp/src/syncological/data"
+```
+
+```{r load_ing, echo=FALSE, warning=FALSE, message=FALSE}
+# rates <- c(5, 10, 30)
+rates <- c(5)
+
+# all
+# w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.52", "0.54", 
+#            "0.56", "0.58", "0.60", "0.70", "0.8", "0.9", "1.0")
+# Even sampling
+w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0")
+js <- 1:20
+
+tmppath <- paste(path, "/ing_exp1/", sep="")
+ing1 <- load.ing.analysis(tmppath, rates, w_ies, js)
+```
+
+```{r load_ping, echo=FALSE, warning=FALSE, message=FALSE}
+# rates <- c(5, 10, 30)
+rates <- c(5)
+
+# Even sampling
+w_eis <- c("1.0", "1.1", "1.2", "1.3", "1.4", "1.5")
+w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0")
+
+# All
+# w_eis <- c("1.0", "1.01", "1.02", "1.03", "1.04", "1.04", "1.06", "1.08", "1.09", 
+#            "1.1", "1.2", "1.3", "1.4", "1.5")
+# w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.52", "0.54", "0.56", 
+#            "0.58", "0.60", "0.70", "0.8", "0.9", "1.0")
+js <- 1:20
+
+tmppath <- paste(path, "/ping_exp1/", sep="")
+ping1 <- load.ping.analysis(tmppath, rates, w_eis, w_ies, js)
+```
+
+```{r load_async, echo=FALSE, warning=FALSE, message=FALSE}
+# rates <- c(5, 10, 30)
+rates <- c(5)
+js <- 1:20
+
+tmppath <- paste(path, "/async_exp1_type/", sep="")
+async1 <- load.async.analysis(tmppath, rates, js)
+```
+
+# Analysis
+
+__TODO__
+- Plot against spectral power (LFP or poprate).
+
+
+## `w_ie` 
+
+### Async
+
+```{r plot_async_isi}
+async1 %>%
+  filter(stat %in% c("isi_e")) %>%
+  ggplot(aes(x=w_ie, y=x, group=interaction(w_ie, rate), fill=as.factor(rate))) + 
+    geom_boxplot(width=0.1) + 
+    ylim(0.5, 1) +
+#     facet_grid(.~rate, scales = "free") +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("w_ie (msiemens)") +
+    ylab("ISI Synchrony") -> p1
+print(p1)
+```
+
+```{r plot_async_fano}
+async1 %>%
+  filter(stat %in% c("fano_pre_e", "fano_e")) %>%
+  ggplot(aes(x=as.numeric(w_ie), y=x, group=interaction(w_ie, rate), fill=as.factor(rate))) + 
+    geom_boxplot(width=0.1) + 
+    facet_grid(.~stat, scales = "free") +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("w_ie (msiemens)") +
+    ylab("Fano") 
+```
+
+```{r plot_async_lav}
+async1 %>%
+  filter(stat %in% c("lev_e")) %>%
+  ggplot(aes(x=w_ie, y=x, group=interaction(w_ie, rate), fill=as.factor(rate))) + 
+    geom_boxplot(width=0.1) + 
+    theme_classic() +
+    ylim(400, 2000) +
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("w_ie (msiemens)") +
+    ylab("ISI Synchrony") -> p3
+print(p3)
+```
+
+
+### ING
+
+```{r plot_ing_isi}
+ing1 %>%
+  filter(stat %in% c("isi_e")) %>%
+  ggplot(aes(x=as.numeric(w_ie), y=x, group=interaction(w_ie, rate), fill=as.factor(rate))) + 
+    geom_boxplot() + 
+    ylim(0.5, 1) +
+#     facet_grid(.~rate, scales = "free") +
+    geom_hline(yintercept=.82) +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("w_ie (msiemens)") +
+    
+    ylab("ISI Synchrony") -> p2
+print(p2)
+```
+
+```{r plot_ing_fano}
+ing1 %>%
+  filter(stat %in% c("fano_e")) %>%
+  ggplot(aes(x=as.numeric(w_ie), y=x, group=interaction(w_ie, rate), fill=as.factor(rate))) + 
+    geom_boxplot() + 
+#     facet_grid(.~rate, scales = "free") +
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("w_ie (msiemens)") +
+    ylab("ISI Synchrony")
+```
+
+```{r plot_ing_lav}
+ing1 %>%
+  filter(stat %in% c("lev_e")) %>%
+  ggplot(aes(x=w_ie, y=x, group=interaction(w_ie, rate), fill=as.factor(rate))) + 
+    geom_boxplot(width=0.1) + 
+    theme_classic() + 
+    theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    xlab("w_ie (msiemens)") +
+    ylim(400, 2000) +
+    ylab("ISI Synchrony") -> p4
+print(p4)
+```
+
+
+### PING
+
+```{r plot_ping}
+# ie
+ping1 %>%
+#   select(-w_ei) %>%
+  filter(stat %in% c("fano_e", "fano_pre_e")) %>%
+  ggplot(aes(x=w_ie, y=x, group=interaction(w_ie, stat), color=stat)) + 
+  geom_boxplot() + 
+#   facet_grid(rate~.) +
+  theme_classic() 
+```
+
+* In both PING and ING, `w_ie` effects synchrony (ISI and sync),
+* but not alway kappa or fano
+* Stim onset greatly enhances this effect
+
+
+### Joint
+
+```{r}
+grid.arrange(p1, p2, nrow=1)
+```
+
+```{r}
+grid.arrange(p3, p4, nrow=1)
+```
+
+## `w_ei` 
+
+```{r, eval=FALSE}
+ping1 %>%
+  select(-w_ie) %>%
+  filter(stat %in% c("fano_e", "fano_pre_e")) %>%
+  ggplot(aes(x=w_ei, y=x, group=w_ei, color=stat)) + 
+  geom_point() + 
+#   facet_grid(rate~.) +
+  theme_classic()
+```
+
+```{r}
+ping1 %>%
+  filter(stat %in% c("isi_e")) %>%
+  ggplot(aes(x=w_ei, y=w_ie, fill=x)) + 
+  geom_tile() + 
+  scale_fill_continuous(low="white", high="red") +
+#   facet_grid(rate~.) +
+  theme_classic()
+```
+
+* `w_ei` doesn't effect synchrony.
+* Does is relate to LFP spectral (or poprate) power though?
