@@ -3,8 +3,8 @@
 """
 Implements a sparse PING E-I model, based Wang and Buzsaki[0].
 
-[0]: Gamma oscillation by synaptic inhibition in a hippocampal 
-interneuronal network model. Wang XJ, Buzsaki G.J Neurosci. 
+[0]: Gamma oscillation by synaptic inhibition in a hippocampal
+interneuronal network model. Wang XJ, Buzsaki G.J Neurosci.
 1996 Oct 15;16(20):6402-13.
 """
 from __future__ import division
@@ -18,7 +18,7 @@ from fakespikes import util as futil
 import pyspike as spk
 
 
-def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, I_e, I_i, 
+def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, I_e, I_i,
         seed=None):
     """Model some BRAINS!"""
 
@@ -33,7 +33,7 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, I_e, I_i,
 
     r_e = 10 * Hz
     r_i = r_e
-    
+
     if I_e is None:
         I_e = (0.3, 0.3)
     if I_i is None:
@@ -156,7 +156,7 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, I_e, I_i,
     P_i.I = np.random.uniform(I_i[0], I_i[1], N_i) * uamp
 
     P_e_back = PoissonGroup(N_e, rates=r_e)
-        P_i_back = PoissonGroup(N_i, rates=r_i)
+    P_i_back = PoissonGroup(N_i, rates=r_i)
 
     # --
     # Stimulus

@@ -91,6 +91,7 @@ result = model(
     args.time,
     args.stim, args.rate,
     args.w_e, args.w_i, args.w_ei, args.w_ie, 
+    args.I_e, args.I_i,
     seed=seed
 )
 save_result(args.name, result)
