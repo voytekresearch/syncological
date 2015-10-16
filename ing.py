@@ -11,10 +11,18 @@ import argparse
 import numpy as np
 from brian2 import *
 from syncological.inputs import gaussian_impulse
+from scipy.stats.mstats import zscore
+from foof.util import create_psd
+from fakespikes import util as futil
+import pyspike as spk
 
 
-def model(time, time_stim, w_e, w_i, w_ie, seed=42):
+def model(time, time_stim, rate_stim, w_e, w_i, w_ie, I_e, I_i_sigma=0.01,
+        seed=None):
     """Model some BRAINS!"""
+
+    time = time * second
+    time_stim = time_stim * second
 
     # Network
     N = 1000
@@ -24,6 +32,8 @@ def model(time, time_stim, w_e, w_i, w_ie, seed=42):
 
     r_e = 10 * Hz
     r_i = r_e
+
+    cdelay = 2 * ms
 
     w_e = w_e * msiemens
     w_i = w_i * msiemens
@@ -42,9 +52,10 @@ def model(time, time_stim, w_e, w_i, w_ie, seed=42):
     # --
     # cell biophysics
     # WB (I)
-    I_currents_i = 1.1  # * uamp
-    I_currents_i = np.random.normal(I_currents_i, 0.01, N_i) * uamp
-    I_currents_e = 0.25 * uamp
+    I_i = 1.1  # * uamp
+    I_i = np.random.normal(I_i, I_i_sigma, N_i) * uamp
+    if I_e is None:
+        I_e = (0.25, .25)
 
     # After-hyperpolaization (AHP)
     ahp = 5
@@ -152,12 +163,20 @@ def model(time, time_stim, w_e, w_i, w_ie, seed=42):
     g_e : siemens
     g_i : siemens
     """ + """
+    I_stim = g_s * (V_e - V) : amp
+    g_s : siemens
+    """ + """
     I : amp
     """
 
     syn_e_in = """
     dg/dt = -g / tau_d_ampa : siemens
     g_e_post = g : siemens (summed)
+    """
+
+    syn_e_stim = """
+    dg/dt = -g / tau_d_ampa : siemens
+    g_s_post = g : siemens (summed)
     """
 
     syn_e = """
@@ -185,8 +204,8 @@ def model(time, time_stim, w_e, w_i, w_ie, seed=42):
         refractory=3 * ms,
         method='exponential_euler'
     )
-    P_i.I = I_currents_i
-    P_e.I = I_currents_e
+    P_i.I = I_i
+    P_e.I = np.random.uniform(I_e[0], I_e[1], N_e) * uamp
     P_e.V = V_l
     P_i.v = EL_wb
 
@@ -200,8 +219,8 @@ def model(time, time_stim, w_e, w_i, w_ie, seed=42):
     t_max = time_stim + window / 2
     stdev = 100 / 1000.  # 100 ms
 
-    rate = 5  # Hz
-    k = N_stim * int(rate / 2)
+    # rate = 5  # Hz
+    k = N_stim * int(rate_stim / 2)
 
     ts, idxs = gaussian_impulse(time_stim, t_min,
                                 t_max, stdev, N_stim, k,
@@ -212,7 +231,7 @@ def model(time, time_stim, w_e, w_i, w_ie, seed=42):
     # Connections
     # External
     C_stim_e = Synapses(
-        P_stim, P_e, model=syn_e_in,
+        P_stim, P_e, model=syn_e_stim,
         pre='g += w_e', connect='i == j'
     )
     C_back_e = Synapses(
@@ -221,16 +240,18 @@ def model(time, time_stim, w_e, w_i, w_ie, seed=42):
     )
 
     # Internal
-    C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie')
+    C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie', delay=cdelay)
     C_ie.connect(True, p=0.4)
-    C_ii = Synapses(P_i, P_i, model=syn_i,pre='g += gSyn_wb', connect=True)
+    C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += gSyn_wb', connect=True)
 
     # --
     # Record
     spikes_i = SpikeMonitor(P_i)
     spikes_e = SpikeMonitor(P_e)
+    spikes_stim = SpikeMonitor(P_stim)
     pop_e = PopulationRateMonitor(P_e)
-    voltages_e = StateMonitor(P_e, ('V', 'g_e', 'g_i'), record=range(11, 31))
+    pop_i = PopulationRateMonitor(P_i)
+    voltages_e = StateMonitor(P_e, ('V', 'g_e', 'g_i', 'g_s'), record=range(11, 31))
     voltages_i = StateMonitor(P_i, ('v', 'g_i'), record=range(11, 31))
 
     # --
@@ -241,72 +262,115 @@ def model(time, time_stim, w_e, w_i, w_ie, seed=42):
     return {
         'spikes_i': spikes_i,
         'spikes_e': spikes_e,
+        'spikes_stim': spikes_stim,
         'pop_e': pop_e,
+        'pop_i': pop_i,
         'voltages_e': voltages_e,
         'voltages_i': voltages_i
     }
 
 
-def analyze(result):
-    pass
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="A sparse ING E-I model.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument(
-        "name",
-        help="Name of exp, used to save results as hdf5."
-    )
-    parser.add_argument(
-        "-t", "--time",
-        help="Simulation run time (in ms)",
-        default=2,
-        type=float
-    )
-    parser.add_argument(
-        "--time_stim",
-        help="Simulus times (in ms)",
-        nargs='+',
-        default=[1.5],
-        type=float
-    )
-    parser.add_argument(
-        "--w_e",
-        help="Input weight to E (msiemens)",
-        default=0.06,
-        type=float
-    )
-    parser.add_argument(
-        "--w_i",
-        help="Input weight to E (msiemens)",
-        default=0.02,
-        type=float
-    )
-    parser.add_argument(
-        "--w_ie",
-        help="Weight I -> E (msiemens)",
-        default=0.1,
-        type=float
-    )
-    args = parser.parse_args()
+def save_result(name, result, fs=10000):
+    spikes_e = result['spikes_e']
+    spikes_i = result['spikes_i']
+    spikes_stim = result['spikes_i']
+    pop_e = result['pop_e']
+    pop_i = result['pop_i']
+    voltages_e = result['voltages_e']
+    voltages_i = result['voltages_i']
 
     # --
-    # argvs
-    time = args.time * second
-    time_stim = args.time_stim * second
+    # Save full
+    # Spikes
+    np.savetxt(name + '_spiketimes_e.csv',
+               np.vstack([spikes_e.i, spikes_e.t, ]).transpose(),
+               fmt='%.i, %.5f')
+    np.savetxt(name + '_spiketimes_i.csv',
+               np.vstack([spikes_i.i, spikes_i.t, ]).transpose(),
+               fmt='%.i, %.5f')
+    np.savetxt(name + '_spiketimes_stim.csv',
+               np.vstack([spikes_stim.i, spikes_stim.t, ]).transpose(),
+               fmt='%.i, %.5f')
 
-    w_e = args.w_e
-    w_i = args.w_i
-    w_ie = args.w_ie
+    # Example trace
+    np.savetxt(name + '_exampletrace_e.csv',
+               np.vstack([voltages_e.t, voltages_e.V[0], ]).transpose(),
+               fmt='%.5f, %.4f')
+    np.savetxt(name + '_exampletrace_i.csv',
+               np.vstack([voltages_i.t, voltages_i.v[0], ]).transpose(),
+               fmt='%.5f, %.4f')
 
-    # --
-    # Run!
-    res = model(time, time_stim, w_e, w_i, w_ie)
+    # Pop rate
+    np.savetxt(name + '_poprates_e.csv',
+               np.vstack([pop_e.t, pop_e.rate / Hz, ]).transpose(),
+               fmt='%.5f, %.1f')
+    np.savetxt(name + '_poprates_i.csv',
+               np.vstack([pop_i.t, pop_i.rate / Hz, ]).transpose(),
+               fmt='%.5f, %.1f')
 
-    # --
-    # Analysis
-    # TODO
-    analyze(res)
+    # LFP
+    lfp = (np.abs(voltages_e.g_e.sum(0)) +
+           np.abs(voltages_e.g_i.sum(0)) +
+           np.abs(voltages_i.g_i.sum(0)))
+    np.savetxt(name + '_lfp.csv', zscore(lfp), fmt='%.2f')
+
+    # PSD
+    lfp = lfp[1000:]  # Drop initial spike
+    freqs, spec = create_psd(lfp, fs)
+    np.savetxt(name + '_psd.csv', np.vstack(
+        [freqs, np.log10(spec)]).transpose(), fmt='%.1f, %.3f')
+
+# Using fn in ing.py instead.
+# def analyze_result(name, stim, result, fs=10000, save=True):
+#     analysis = {}
+#
+#     spikes_e = result['spikes_e']
+#     spikes_stim = result['spikes_stim']
+#     spikes_i = result['spikes_i']
+#
+#     # Get Ns and ts
+#     ns_e, ts_e = spikes_e.i, spikes_e.t / second
+#     ns_i, ts_i = spikes_i.i, spikes_i.t / second
+#     ns_stim, ts_stim = spikes_stim.i, spikes_stim.t / second
+#
+#     # Drop times before stim time
+#     mask = ts_e > stim
+#     ns_e, ts_e = ns_e[mask], ts_e[mask]
+#
+#     # Keep only neurons 0-199
+#     mask = ns_e < 200
+#     ns_e, ts_e = ns_e[mask], ts_e[mask]
+#
+#     # kappa
+#     r_e = futil.kappa(ns_e, ts_e, ns_e, ts_e, (0, 1), 1.0 / 1000)  # 1 ms bins
+#     analysis['kappa_e'] = r_e
+#     r_i = futil.kappa(ns_i, ts_i, ns_i, ts_i, (0, 1), 1.0 / 1000)  # 1 ms bins
+#     analysis['kappa_i'] = r_i
+#
+#     # fano
+#     fanos_e = futil.fano(ns_e, ts_e)
+#     mfano_e = np.nanmean([x for x in fanos_e.values()])
+#     analysis['fano_e'] = mfano_e
+#
+#     # l distance and spike
+#     ordered_e, _ = futil.ts_sort(ns_e, ts_e)
+#     ordered_stim, _ = futil.ts_sort(ns_stim, ts_stim)
+#     lev = futil.levenshtein(list(ordered_stim), list(ordered_e))
+#     analysis['lev_e'] = lev
+#
+#     # ISI and SPIKE
+#     sto_e = spk.SpikeTrain(ts_e, (0.5, 1))
+#     sto_stim = spk.SpikeTrain(ts_stim, (0.5, 1))
+#     sto_e.sort()
+#     sto_stim.sort()
+#     isi = spk.isi_distance(sto_stim, sto_e)
+#     sync = spk.spike_sync(sto_stim, sto_e)
+#
+#     analysis['isi_e'] = isi
+#     analysis['sync_e'] = sync
+#
+#     if save:
+#         with open(name + '_analysis.csv', 'w') as f:
+#             [f.write('{0},{1}\n'.format(k, v)) for k, v in analysis.items()]
+#
+#     return analysis
