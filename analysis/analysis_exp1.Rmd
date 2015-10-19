@@ -24,7 +24,7 @@ library(bspec)
 registerDoParallel(cores=10)
 
 source("loaders.R")
-path <- "/home/ejp/src/syncological/data"
+path <- "/Users/type/Code/syncological/data/"
 ```
 
 ```{r load_ing, echo=FALSE, warning=FALSE, message=FALSE}
@@ -39,36 +39,9 @@ w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0
 js <- 1:20
 
 tmppath <- paste(path, "/ing_exp1/", sep="")
-ing1 <- load.ing.analysis(tmppath, rates, w_ies, js)
+ing1 <- load.ing1.analysis(tmppath, rates, w_ies, js)
 ```
 
-```{r load_ping, echo=FALSE, warning=FALSE, message=FALSE}
-# rates <- c(5, 10, 30)
-rates <- c(5)
-
-# Even sampling
-w_eis <- c("1.0", "1.1", "1.2", "1.3", "1.4", "1.5")
-w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0")
-
-# All
-# w_eis <- c("1.0", "1.01", "1.02", "1.03", "1.04", "1.04", "1.06", "1.08", "1.09", 
-#            "1.1", "1.2", "1.3", "1.4", "1.5")
-# w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.52", "0.54", "0.56", 
-#            "0.58", "0.60", "0.70", "0.8", "0.9", "1.0")
-js <- 1:20
-
-tmppath <- paste(path, "/ping_exp1/", sep="")
-ping1 <- load.ping.analysis(tmppath, rates, w_eis, w_ies, js)
-```
-
-```{r load_async, echo=FALSE, warning=FALSE, message=FALSE}
-# rates <- c(5, 10, 30)
-rates <- c(5)
-js <- 1:20
-
-tmppath <- paste(path, "/async_exp1_type/", sep="")
-async1 <- load.async.analysis(tmppath, rates, js)
-```
 
 # Analysis
 

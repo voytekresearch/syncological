@@ -28,7 +28,7 @@ ing_exp2:
 		--joblog '$(TYPEDATADIR)/ing_exp2/log' \
 		--nice 19 --delay 2 \
 		'$(TYPEHARDPY)/python bin/ing.py $(TYPEDATADIR)/ing_exp2/I_e-{1}-{1}_j-{2} -t 1.0 --stim 0.75 --I_e {1} {1} --seed {2}' ::: \
-		0.1 0.2 0.3 0.4 ::: \
+		0.1 0.2 0.3 0.4 0.6 0.8 ::: \
 		{1..20}
 
 # Synchony reacts to I stability (via I_i_sigma)
@@ -65,7 +65,7 @@ ping_exp2:
 		--joblog '$(TYPEDATADIR)/ping_exp2/log' \
 		--nice 19 --delay 2 \
 		'$(TYPEHARDPY)/python bin/ping.py $(TYPEDATADIR)/ping_exp2/I_e-{1}-{1}_j-{2} -t 1.0 --stim 0.75 --I_e {1} {1} --seed {2}' ::: \
-		0.3 0.4 0.5 0.6 ::: \
+		0.3 0.4 0.5 0.6 0.8 1.0 ::: \
 		{1..20}
 
 

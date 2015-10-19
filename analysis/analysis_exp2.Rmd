@@ -20,7 +20,7 @@ library(bspec)
 registerDoParallel(cores=10)
 
 source("loaders.R")
-path <- "/home/ejp/src/syncological/data"
+path <- "/Users/type/Code/syncological/data"
 ```
 
 ```{r load_ing2}
@@ -56,22 +56,24 @@ ing3 <- load.ing3.analysis(tmppath, I_i_sigmas, js)
 ing2 %>%
   filter(stat %in% c("isi_e")) %>%
   ggplot(aes(x=I_e, y=x)) + 
-#     geom_boxplot() + 
+    # geom_boxplot() + 
     stat_summary(fun.data = "mean_cl_boot", size=1) +
     theme_classic() + 
     theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+    ylim(.7, 0.9) +
     xlab("") +
     ylab("ISI_e") -> p1
 
+
 ing2 %>%
-  filter(stat %in% c("kappa_i")) %>%
+  filter(stat %in% c("fano_e")) %>%
   ggplot(aes(x=I_e, y=x)) + 
-#     geom_boxplot() + 
+    # geom_boxplot() + 
     stat_summary(fun.data = "mean_cl_boot", size=1) +
     theme_classic() + 
     theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
     xlab("") +
-    ylab("Kappa_i") -> p2
+    ylab("Fano") -> p2
 
 ing2 %>%
   filter(stat %in% c("kappa_e")) %>%
@@ -93,7 +95,7 @@ ping2 %>%
   filter(stat %in% c("isi_e")) %>%
   ggplot(aes(x=I_e, y=x)) + 
 #     geom_boxplot() + 
-    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    stat_summary(fun.y = "mean", size=1) +
     theme_classic() + 
     theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
     xlab("") +
@@ -104,7 +106,7 @@ ping2 %>%
   filter(stat %in% c("kappa_i")) %>%
   ggplot(aes(x=I_e, y=x)) + 
 #     geom_boxplot() + 
-    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    stat_summary(fun.y = "mean", size=1) +
     theme_classic() + 
     theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
     xlab("") +
@@ -115,7 +117,7 @@ ping2 %>%
   filter(stat %in% c("kappa_e")) %>%
   ggplot(aes(x=I_e, y=x)) + 
 #     geom_boxplot() + 
-    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    stat_summary(fun.y = "mean", size=1) +
     theme_classic() + 
     theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
     xlab("E drive (uamp)") +
@@ -132,7 +134,7 @@ ing3 %>%
   filter(stat %in% c("isi_e")) %>%
   ggplot(aes(x=I_i_sigma, y=x)) + 
 #     geom_boxplot() + 
-    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    stat_summary(fun.y = "mean", size=1) +
     theme_classic() + 
     theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
     xlab("") +
@@ -143,7 +145,7 @@ ing3 %>%
   filter(stat %in% c("kappa_i")) %>%
   ggplot(aes(x=I_i_sigma, y=x)) + 
 #     geom_boxplot() + 
-    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    stat_summary(fun.y = "mean", size=1) +
     theme_classic() + 
     theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
     xlab("") +
@@ -154,7 +156,7 @@ ing3 %>%
   filter(stat %in% c("kappa_e")) %>%
   ggplot(aes(x=I_i_sigma, y=x)) + 
 #     geom_boxplot() + 
-    stat_summary(fun.data = "mean_cl_boot", size=1) +
+    stat_summary(fun.y = "mean", size=1) +
     theme_classic() + 
     theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
     xlab("I drive variance (uamp)") +
