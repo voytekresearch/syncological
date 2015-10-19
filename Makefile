@@ -4,6 +4,9 @@ DATADIR=/home/ejp/src/syncological/data
 TYPEDATADIR=/Users/type/Code/syncological/data
 TYPEHARDPY=/Users/type/anaconda/bin/
 
+sfn: ing_exp1 ing_exp2 ing_exp3 ping_exp1 ping_exp2 async_exp1
+
+
 exp1: ing_exp1 ping_exp1 async_exp1
 
 
