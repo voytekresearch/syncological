@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Implements a sparse PING E-I model, based Wang and Buzsaki[0].
-
-[0]: Gamma oscillation by synaptic inhibition in a hippocampal
-interneuronal network model. Wang XJ, Buzsaki G.J Neurosci.
-1996 Oct 15;16(20):6402-13.
+Implements a sparse PING E-I model, based Borges et al PNAS 2005.
 """
 from __future__ import division
 import argparse
