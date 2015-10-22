@@ -14,7 +14,7 @@ Simulation and initial analysis is in Python 2.7. Plotting and some light analys
 1. Download or clone this repo to somewhere on your [python path](https://support.enthought.com/hc/en-us/articles/204469160-How-do-I-set-PYTHONPATH-and-other-environment-variables-for-Canopy-)
 2. Run all experiments (via the command line) by callling `make sfn` from the top-level `syncological` directory.
 
-Note: the experiments are run in parallel, on up to 12 cores (though this can expanded in the Makefile). If you have 12 cores available, as I do. These simulation will take several hours to complete. 
+Note: the experiments are run in parallel, on up to 12 cores (though this can expanded in the Makefile). If you have 12 cores available, as I do, these simulation will take several hours to complete.
 
 ## R
 
@@ -22,7 +22,7 @@ Open the `analysis/sfn_figures.Rmd` in Rstudio (see below) and run it.
 
 ## Dependencies.
 
-The R and Python (combined() code has substantial dependencies. It you already have basic scientific installs of each, these should be easy to fulfill. That said, I've not created a proper install file so you'll have to do it by hand.   
+The R and Python code has substantial dependencies. It you already have basic scientific installs of each, these should be easy to fulfill. That said, I've not created a proper install file so you'll have to do it by hand.   
 
 The Python dependencies are:
 
