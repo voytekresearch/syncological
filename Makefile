@@ -4,6 +4,9 @@ DATADIR=/home/ejp/src/syncological/data
 TYPEDATADIR=/Users/type/Code/syncological/data
 TYPEHARDPY=/Users/type/anaconda/bin/
 
+sfn: ing_exp1 ing_exp2 ing_exp3 ping_exp1 ping_exp2 async_exp1
+
+
 exp1: ing_exp1 ping_exp1 async_exp1
 
 
@@ -28,7 +31,7 @@ ing_exp2:
 		--joblog '$(TYPEDATADIR)/ing_exp2/log' \
 		--nice 19 --delay 2 \
 		'$(TYPEHARDPY)/python bin/ing.py $(TYPEDATADIR)/ing_exp2/I_e-{1}-{1}_j-{2} -t 1.0 --stim 0.75 --I_e {1} {1} --seed {2}' ::: \
-		0.1 0.2 0.3 0.4 ::: \
+		0.1 0.2 0.3 0.4 0.6 0.8 ::: \
 		{1..20}
 
 # Synchony reacts to I stability (via I_i_sigma)
@@ -75,7 +78,7 @@ ping_exp2:
 		--joblog '$(TYPEDATADIR)/ping_exp2/log' \
 		--nice 19 --delay 2 \
 		'$(TYPEHARDPY)/python bin/ping.py $(TYPEDATADIR)/ping_exp2/I_e-{1}-{1}_j-{2} -t 1.0 --stim 0.75 --I_e {1} {1} --seed {2}' ::: \
-		0.3 0.4 0.5 0.6 ::: \
+		0.3 0.4 0.5 0.6 0.8 1.0 ::: \
 		{1..20}
 
 # Rate changes and synch

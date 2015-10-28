@@ -50,6 +50,43 @@ load.ping1.analysis <- function(path, rates, w_eis, w_ies, js){
   df
 }
 
+load.ping1.poprates <- function(path, pop, rates, w_eis, w_ies, js){
+  df <- NULL
+  for(r_s in rates){
+    for(w_ie in w_ies){
+      for(w_ei in w_eis){
+        poprates <- NULL
+        for(j in js){
+          try({
+            # rate-{1}_ie-{2}_j-{3}
+            name <- paste("rate-", as.character(r_s),
+                          "_ei-", as.character(w_ei),
+                          "_ie-", as.character(w_ie),
+                          "_j-", as.character(j),
+                          "_poprates_", as.character(pop),
+                          ".csv", sep="")
+            dat <- NULL
+            dat <- read.csv(paste(path, name, sep=""), header=FALSE)
+            colnames(dat) <- c("sample_time", "poprate")
+            poprates <- cbind(poprates, dat$poprate)
+          })
+        }
+        df <- rbind(df,
+                    data.frame(
+                      poprate = rowMeans(poprates),
+                      sample_time = dat$sample_time,
+                      rate = rep(r_s, nrow(poprates)),
+                      w_ie = rep(w_ie, nrow(poprates)),
+                      w_ei = rep(w_ei, nrow(poprates))
+                    )
+        )
+      }
+    }
+  }
+  df
+}
+
+
 load.async1.analysis <- function(path, rates, js){
   df <- NULL
   for(r_s in rates){
@@ -124,6 +161,66 @@ load.ing2.analysis <- function(path, I_es, js){
   df
 }
 
+load.ing2.poprates <- function(path, pop, rates, I_es, js){
+  df <- NULL
+  for(r_s in rates){
+    for(I_e in I_es){
+      poprates <- NULL
+      for(j in js){
+        try({
+          # rate-{1}_ie-{2}_j-{3}
+          name <- paste("rate-", as.character(r_s),
+                        "_I_e-", as.character(I_e),
+                        "_j-", as.character(j),
+                        "_poprates_", as.character(pop),
+                        ".csv", sep="")
+          dat <- NULL
+          dat <- read.csv(paste(path, name, sep=""), header=FALSE)
+          colnames(dat) <- c("sample_time", "poprate")
+          poprates <- cbind(poprates, dat$poprate)
+        })
+      }
+      df <- rbind(df,
+                  data.frame(
+                    poprate = rowMeans(poprates),
+                    sample_time = dat$sample_time,
+                    rate = rep(r_s, nrow(poprates)),
+                    I_e = rep(I_e, nrow(poprates))
+                  )
+      )
+    }
+  }
+  df
+}
+
+load.ing2.poprates <- function(path, pop, I_es, js){
+  df <- NULL
+  for(I_e in I_es){
+    poprates <- NULL
+    for(j in js){
+      try({
+        # rate-{1}_ie-{2}_j-{3}
+        name <- paste("I_e-", as.character(I_e), "-", as.character(I_e),
+                      "_j-", as.character(j),
+                      "_poprates_", as.character(pop),
+                      ".csv", sep="")
+        dat <- NULL
+        dat <- read.csv(paste(path, name, sep=""), header=FALSE)
+        colnames(dat) <- c("sample_time", "poprate")
+        poprates <- cbind(poprates, dat$poprate)
+      })
+    }
+    df <- rbind(df,
+                data.frame(
+                  poprate = rowMeans(poprates),
+                  sample_time = dat$sample_time,
+                  I_e = rep(I_e, nrow(poprates))
+                )
+    )
+  }
+  df
+}
+
 load.ing3.analysis <- function(path, I_i_sigmas, js){
   df <- NULL
   for(I_i in I_i_sigmas){
@@ -141,6 +238,34 @@ load.ing3.analysis <- function(path, I_i_sigmas, js){
         df <- rbind(df, dat)
       })
     }
+  }
+  df
+}
+
+load.ing3.poprates <- function(path, pop, I_i_sigmas, js){
+  df <- NULL
+  for(I_i_sigma in I_i_sigmas){
+    poprates <- NULL
+    for(j in js){
+      try({
+        # rate-{1}_ie-{2}_j-{3}
+        name <- paste("I_i_sigma-", as.character(I_i_sigma),
+                      "_j-", as.character(j),
+                      "_poprates_", as.character(pop),
+                      ".csv", sep="")
+        dat <- NULL
+        dat <- read.csv(paste(path, name, sep=""), header=FALSE)
+        colnames(dat) <- c("sample_time", "poprate")
+        poprates <- cbind(poprates, dat$poprate)
+      })
+    }
+    df <- rbind(df,
+                data.frame(
+                  poprate = rowMeans(poprates),
+                  sample_time = dat$sample_time,
+                  I_i_sigma = rep(I_i_sigma, nrow(poprates))
+                )
+    )
   }
   df
 }

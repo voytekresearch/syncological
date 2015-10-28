@@ -21,7 +21,7 @@ library(bspec)
 registerDoParallel(cores=10)
 
 source("loaders.R")
-path <- "/home/ejp/src/syncological/data"
+path <- "/Users/type/Code/syncological/data"
 ```
 
 ```{r load_ing1, echo=FALSE, warning=FALSE, message=FALSE}
@@ -90,7 +90,7 @@ for(w_ie_i in w_ies){
   ing1.power <- rbind(
     ing1.power,
     data.frame(
-      power = mean(sel$spec),
+      power = mean(log10(sel$spec)),
       w_ie = w_ie_i 
     )  
   )
