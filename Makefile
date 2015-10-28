@@ -42,6 +42,16 @@ ing_exp3:
 		0.01 0.02 0.04 0.06 0.08 0.1 ::: \
 		{1..20}
 
+# Rate changes and synch
+ing_exp4:
+	-mkdir $(DATADIR)/ing_exp4
+	-rm $(DATADIR)/ing_exp4/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ing_exp4/log' \
+		--nice 19 --delay 2 \
+		'python bin/ing.py $(DATADIR)/ing_exp4/rate-{1}_j-{2} -t 1.0 --stim 0.75 --rate {1} --seed {2}' ::: \
+		5 7 10 12 15 17 20 22 15 27 30 32 35 37 40 42 45 47 50 52 55 57 60 ::: \
+		{1..20}
 
 # --------------------------------------------------------------------------
 #  Stimulus reacts to w_ei, w_ie and rate
@@ -68,6 +78,16 @@ ping_exp2:
 		0.3 0.4 0.5 0.6 ::: \
 		{1..20}
 
+# Rate changes and synch
+ping_exp4:
+	-mkdir $(DATADIR)/ping_exp4
+	-rm $(DATADIR)/ping_exp4/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ping_exp4/log' \
+		--nice 19 --delay 2 \
+		'python bin/ping.py $(DATADIR)/ping_exp4/rate-{1}_j-{2} -t 1.0 --stim 0.75 --rate {1} --seed {2}' ::: \
+		5 7 10 12 15 17 20 22 15 27 30 32 35 37 40 42 45 47 50 52 55 57 60 ::: \
+		{1..20}
 
 # --------------------------------------------------------------------------
 #  Stimulus reacts to rate under chaos
