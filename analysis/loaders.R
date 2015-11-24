@@ -242,6 +242,28 @@ load.ing3.analysis <- function(path, I_i_sigmas, js){
   df
 }
 
+load.ing4.analysis <- function(path, rates, js){
+  df <- NULL
+  for(rr in rates){
+    for(j in js){
+      try({
+        # rate-7_j-8_analysis.csv
+        name <- paste("rate-", as.character(rr),
+                      "_j-", as.character(j),
+                      "_analysis.csv", sep="")
+        dat <- read.csv(paste(path, name, sep=""), header=FALSE)
+        colnames(dat) <- c("stat", "x")
+        dat["rate"] <- rep(rr, nrow(dat))
+        dat["I_e"] <- rep("0.25", nrow(dat))
+        dat["j"] <- rep(j, nrow(dat))
+        dat["w_ie"] <- rep("0.5", nrow(dat))
+        df <- rbind(df, dat)
+      })
+    }
+  }
+  df
+}
+
 load.ing3.poprates <- function(path, pop, I_i_sigmas, js){
   df <- NULL
   for(I_i_sigma in I_i_sigmas){
@@ -268,4 +290,32 @@ load.ing3.poprates <- function(path, pop, I_i_sigmas, js){
     )
   }
   df
+}
+
+load.ing4.poprates <- function(path, pop, rates, js){
+  df <- NULL
+  for(r_s in rates){
+    poprates <- NULL
+    for(j in js){
+      try({
+        # rate-{1}_ie-{2}_j-{3}
+        name <- paste("rate-", as.character(r_s),
+                      "_j-", as.character(j),
+                      "_poprates_", as.character(pop),
+                      ".csv", sep="")
+        dat <- NULL
+        dat <- read.csv(paste(path, name, sep=""), header=FALSE)
+        colnames(dat) <- c("sample_time", "poprate")
+        poprates <- cbind(poprates, dat$poprate)
+      })
+    }
+    df <- rbind(df,
+                data.frame(
+                  poprate = rowMeans(poprates),
+                  sample_time = dat$sample_time,
+                  rate = rep(r_s, nrow(poprates))
+                )
+    )
+  }
+df
 }
