@@ -38,6 +38,7 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, I_e, I_i,
     delay = 2 * ms
     p_ei = 0.4
     p_ie = 0.4
+    p_ee = 0.4
     p_ii = 1.0
 
     w_e = w_e * msiemens
@@ -45,7 +46,9 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, I_e, I_i,
     w_ei = w_ei / (p_ei * N_e) * msiemens
     w_ie = w_ie / (p_ie * N_i) * msiemens
 
+    w_ee = 0.2 / (p_ee * N_e) * msiemens
     w_ii = 0.1 / (p_ii * N_i) * msiemens
+
     w_m = 0 / N_e * msiemens  # Read ref 47 to get value
 
     # --
@@ -101,8 +104,10 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, I_e, I_i,
     tau_w = 400 / ((3.3 * exp((V/mV + 35)/20)) + (exp(-1 * (V/mV + 35) / 20))) : 1
     """ + """
     I_syn = g_e * (V_e - V) +
+        g_ee * (V_e - V) +
         g_i * (V_i - V) : amp
     g_e : siemens
+    g_ee : siemens
     g_i : siemens
     """ + """
     I_stim = g_s * (V_e - V) : amp
@@ -124,6 +129,11 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, I_e, I_i,
     syn_e = """
     dg/dt = -g  * 1 / (tau_d_ampa - tau_r_ampa): siemens
     g_e_post = g : siemens (summed)
+    """
+
+    syn_ee = """
+    dg/dt = -g / tau_d_ampa : siemens
+    g_ee_post = g : siemens (summed)
     """
 
     syn_i = """
@@ -189,6 +199,9 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, I_e, I_i,
 
     C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii', delay=delay)
     C_ii.connect(True, p=p_ii)
+
+    C_ee = Synapses(P_e, P_e, model=syn_ee, pre='g += w_ee', delay=delay)
+    C_ee.connect(True, p=p_ee)
 
     # --
     # Record
