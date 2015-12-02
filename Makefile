@@ -56,6 +56,31 @@ ing_exp4:
 		5 7 10 12 15 17 20 22 15 27 30 32 35 37 40 42 45 47 50 52 55 57 60 ::: \
 		{1..20}
 
+# Repeat of 1, with w_ee = 0.2
+# use commit bdac2f76510542ff7b9e3a5cddd0c89c11a59e17
+ing_exp5:
+	-mkdir $(DATADIR)/ing_exp5
+	-rm $(DATADIR)/ing_exp5/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ing_exp5/log' \
+		--nice 19 --delay 2 \
+		'python bin/ing.py $(DATADIR)/ing_exp5/rate-{1}_ie-{2}_j-{3} -t 1.0 --stim 0.75 --rate {1} --w_ie {2} --seed {3}' ::: \
+		5 10 30 ::: \
+		0.1 0.2 0.3 0.4 0.5 0.52 0.54 0.56 0.58 0.60 0.70 0.8 0.9 1.0 ::: \
+		{1..20}
+
+# Repeat of 1, with w_ee 0.2
+# use commit bdac2f76510542ff7b9e3a5cddd0c89c11a59e17
+ing_exp6:
+	-mkdir $(DATADIR)/ing_exp6
+	-rm $(DATADIR)/ing_exp6/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ing_exp6/log' \
+		--nice 19 --delay 2 \
+		'python bin/ing.py $(DATADIR)/ing_exp6/I_e-{1}-{1}_j-{2} -t 1.0 --stim 0.75 --I_e {1} {1} --seed {2}' ::: \
+		0.1 0.2 0.3 0.4 0.6 0.8 ::: \
+		{1..20}
+
 # --------------------------------------------------------------------------
 #  Stimulus reacts to w_ei, w_ie and rate
 ping_exp1:
@@ -90,6 +115,33 @@ ping_exp4:
 		--nice 19 --delay 2 \
 		'python bin/ping.py $(DATADIR)/ping_exp4/rate-{1}_j-{2} -t 1.0 --stim 0.75 --rate {1} --seed {2}' ::: \
 		5 7 10 12 15 17 20 22 15 27 30 32 35 37 40 42 45 47 50 52 55 57 60 ::: \
+		{1..20}
+
+# Repeat of 1, with w_ee = 0.2
+# use commit bdac2f76510542ff7b9e3a5cddd0c89c11a59e17
+# Killed early in run....ran for ~12h, which was enough to see EE didn't qual change the outcome
+ping_exp5:
+	-mkdir $(DATADIR)/ping_exp5
+	-rm $(DATADIR)/ping_exp5/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ping_exp5/log' \
+		--nice 19 --delay 2 \
+		'python bin/ping.py $(DATADIR)/ping_exp5/rate-{1}_ei-{2}_ie-{3}_j-{4} -t 1.0 --stim 0.75 --rate {1} --w_ei {2} --w_ie {3} --seed {4}' ::: \
+		5 10 30 ::: \
+		1.0 1.01 1.02 1.03 1.04 1.04 1.06 1.08 1.09 1.1 1.2 1.3 1.4 1.5 ::: \
+		0.1 0.2 0.3 0.4 0.5 0.52 0.54 0.56 0.58 0.60 0.70 0.8 0.9 1.0 ::: \
+		{1..20}
+
+# Repeat of 2, with w_ee = 0.2
+# use commit bdac2f76510542ff7b9e3a5cddd0c89c11a59e17
+ping_exp6:
+	-mkdir $(DATADIR)/ping_exp6
+	-rm $(DATADIR)/ping_exp6/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ping_exp6/log' \
+		--nice 19 --delay 2 \
+		'python bin/ping.py $(DATADIR)/ping_exp6/I_e-{1}-{1}_j-{2} -t 1.0 --stim 0.75 --I_e {1} {1} --seed {2}' ::: \
+		0.3 0.4 0.5 0.6 0.8 1.0 ::: \
 		{1..20}
 
 # --------------------------------------------------------------------------
