@@ -1,0 +1,286 @@
+---
+title: "exp4 - rates"
+author: "Erik J Peterson"
+date: "October 28, 2015"
+output: html_document
+---
+
+```{r helper_fns, echo=FALSE, fig.width=6, fig.height=4, echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape)
+library(png)
+library(psd)
+library(tidyr)
+library(doParallel)
+library(bspec)
+registerDoParallel(cores=10)
+
+source("loaders.R")
+path <- "/home/ejp/src/syncological/data/"
+# path <- "/Users/type/Code/syncological/data/"
+
+limits <- aes(ymax = M + SD, ymin=M - SD)
+```
+
+# ING
+
+```{r ing}
+rates <- c("5", "7", "10", "12", "15", "17", "20", "22", "15", "27", "30", "32", 
+           "35", "37", "40", "42", "45", "47", "50", "52", "55", "57", "60")
+js <- 1:20
+tmppath <- paste(path, "/ing_exp4/", sep="")
+
+# Load results
+ing4 <- load.ing4.analysis(tmppath, rates, js)
+ing4 %>%
+  group_by(stat, rate, I_e, w_ie) %>%
+  summarise(M=mean(x), SD=sd(x)) ->
+  ing4.m
+
+# Load pop rates
+ing4.poprate.e <- load.ing4.poprates(tmppath, "e", rates, js)
+ing4.poprate.i <- load.ing4.poprates(tmppath, "i", rates, js)
+
+ing4.spec <- NULL
+for(rate in rates){
+  mask <- ing4.poprate.e$rate == rate
+  prate <- ing4.poprate.e[mask,'poprate']
+  
+  spec <- pspectrum(prate, x.frqsamp=10000)
+  ing4.spec <- rbind(
+    ing4.spec,
+    data.frame(
+      spec=spec$spec, 
+      freq=spec$freq, 
+      rate=rep(rate, length(spec$spec))
+      )
+    )
+  }
+
+ing4.power <- NULL
+for(rate_i in rates){
+  sel <- filter(ing4.spec, rate == rate_i, freq > 10, freq < 30)
+  ing4.power <- rbind(
+    ing4.power,
+    data.frame(
+      M = mean(log10(sel$spec)),
+      SD = sd(log10(sel$spec)),
+      rate = rate_i 
+    )  
+  )
+}
+
+ing4.spec.pre <- NULL
+for(rate_i in rates){
+  prate <- filter(ing4.poprate.e, rate == rate_i, sample_time > .2, sample_time < 0.5)[['poprate']]
+  spec <- pspectrum(prate, x.frqsamp=10000)
+  ing4.spec.pre <- rbind(
+    ing4.spec.pre,
+    data.frame(
+      spec=spec$spec, 
+      freq=spec$freq, 
+      rate=rep(rate, length(spec$spec))
+      )
+    )
+  }
+
+ing4.power.pre <- NULL
+for(rate_i in rates){
+  sel <- filter(ing4.spec.pre, rate == rate_i, freq > 10, freq < 30)
+  ing4.power.pre <- rbind(
+    ing4.power,
+    data.frame(
+      M = mean(log10(sel$spec)),
+      SD = sd(log10(sel$spec)),
+      rate = rate_i 
+    )  
+  )
+}
+
+ing4.power$stat <- rep("Post", nrow(ing4.power))
+ing4.power.pre$stat <- rep("Pre", nrow(ing4.power.pre))
+ing4.power <- rbind(ing4.power, ing4.power.pre)
+
+```
+
+```{r}
+ing4.m %>% 
+  filter(stat %in% c("isi_e")) %>%
+  ggplot(aes(x=as.numeric(rate), y=M, group=rate)) + 
+  geom_errorbar(limits, width=0.2, color="grey") + 
+  geom_point(size=4) +
+  geom_hline(yintercept=0.82, color="red") +
+  geom_hline(yintercept=0.50, color="grey") +
+  ylim(0.5, 1) +
+  theme_classic() + 
+  xlab(expression(r[s])) +
+  ylab("ISI synchrony") -> p.ing4.isi.e
+print(p.ing4.isi.e)
+```
+
+```{r}
+ing4.power %>% 
+  filter(stat %in% c("Post")) %>%
+  ggplot(aes(x=as.numeric(rate), y=M, group=rate)) + 
+  scale_color_manual(values=c("black", "grey")) +
+  geom_point(size=4, position = "jitter") +
+  theme_classic() + 
+  theme(legend.position="top") +
+  xlab(expression(r[S])) +
+  ylab("log(Power)") -> p.ing4.power.e
+print(p.ing4.power.e)
+```
+
+```{r}
+ing4.m %>% 
+  filter(stat %in% c("lev_e")) %>%
+  ggplot(aes(x=as.numeric(rate), y=M, group=rate)) + 
+  geom_errorbar(limits, width=0.2, color="grey") + 
+  geom_point(size=4) +
+  # stat_summary(fun.data = "mean_cl_boot", size=1) +
+  # geom_boxplot(width=0.1) + 
+  # ylim(0.5, 1) +
+  #     facet_grid(.~rate, scales = "free") +
+  theme_classic() + 
+  xlab(expression(r[S])) +
+  geom_hline(yintercept=464, color="red") +
+  ylab("Code fidelity") -> p.ing4.lev.e
+print(p.ing4.lev.e)
+```
+
+# PING
+
+```{r ping}
+rates <- c("5", "7", "10", "12", "15", "17", "20", "22", "15", "27", "30", "32", 
+           "35", "37", "40", "42", "45", "47", "50", "52", "55", "57", "60")
+js <- 1:20
+tmppath <- paste(path, "/ping_exp4/", sep="")
+
+# Load results
+ping4 <- load.ing4.analysis(tmppath, rates, js)
+ping4 %>%
+  group_by(stat, rate, I_e, w_ie) %>%
+  summarise(M=mean(x), SD=sd(x)) ->
+  ping4.m
+
+# Load pop rates
+ping4.poprate.e <- load.ing4.poprates(tmppath, "e", rates, js)
+ping4.poprate.i <- load.ing4.poprates(tmppath, "i", rates, js)
+
+ping4.spec <- NULL
+for(rate in rates){
+  mask <- ping4.poprate.e$rate == rate
+  prate <- ping4.poprate.e[mask,'poprate']
+  
+  spec <- pspectrum(prate, x.frqsamp=10000)
+  ping4.spec <- rbind(
+    ping4.spec,
+    data.frame(
+      spec=spec$spec, 
+      freq=spec$freq, 
+      rate=rep(rate, length(spec$spec))
+      )
+    )
+  }
+
+ping4.power <- NULL
+for(rate_i in rates){
+  sel <- filter(ping4.spec, rate == rate_i, freq > 10, freq < 30)
+  ping4.power <- rbind(
+    ping4.power,
+    data.frame(
+      M = mean(log10(sel$spec)),
+      SD = sd(log10(sel$spec)),
+      rate = rate_i 
+    )  
+  )
+}
+
+ping4.spec.pre <- NULL
+for(rate_i in rates){
+  prate <- filter(ping4.poprate.e, rate == rate_i, sample_time > .2, sample_time < 0.5)[['poprate']]
+  spec <- pspectrum(prate, x.frqsamp=10000)
+  ping4.spec.pre <- rbind(
+    ping4.spec.pre,
+    data.frame(
+      spec=spec$spec, 
+      freq=spec$freq, 
+      rate=rep(rate, length(spec$spec))
+      )
+    )
+  }
+
+ping4.power.pre <- NULL
+for(rate_i in rates){
+  sel <- filter(ping4.spec.pre, rate == rate_i, freq > 10, freq < 30)
+  ping4.power.pre <- rbind(
+    ping4.power,
+    data.frame(
+      M = mean(log10(sel$spec)),
+      SD = sd(log10(sel$spec)),
+      rate = rate_i 
+    )  
+  )
+}
+
+ping4.power$stat <- rep("Post", nrow(ping4.power))
+ping4.power.pre$stat <- rep("Pre", nrow(ping4.power.pre))
+ping4.power <- rbind(ping4.power, ping4.power.pre)
+```
+
+```{r}
+ping4.m %>% 
+  filter(stat %in% c("isi_e")) %>%
+  ggplot(aes(x=as.numeric(rate), y=M, group=rate)) + 
+  geom_errorbar(limits, width=0.2, color="grey") + 
+  geom_point(size=4) +
+  geom_hline(yintercept=0.82, color="red") +
+  geom_hline(yintercept=0.50, color="grey") +
+  ylim(0.5, 1) +
+  theme_classic() + 
+  xlab(expression(r[s])) +
+  ylab("ISI synchrony") -> p.ping4.isi.e
+print(p.ping4.isi.e)
+```
+
+```{r}
+ping4.power %>% 
+  filter(stat %in% c("Post")) %>%
+  ggplot(aes(x=as.numeric(rate), y=M, group=rate)) + 
+  scale_color_manual(values=c("black", "grey")) +
+  geom_point(size=4, position = "jitter") +
+  theme_classic() + 
+  theme(legend.position="top") +
+  xlab(expression(r[S])) +
+  ylab("log(Power)") -> p.ping4.power.e
+print(p.ping4.power.e)
+```
+
+```{r}
+ping4.m %>% 
+  filter(stat %in% c("lev_e")) %>%
+  ggplot(aes(x=as.numeric(rate), y=M, group=rate)) + 
+  geom_errorbar(limits, width=0.2, color="grey") + 
+  geom_point(size=4) +
+  # stat_summary(fun.data = "mean_cl_boot", size=1) +
+  # geom_boxplot(width=0.1) + 
+  # ylim(0.5, 1) +
+  #     facet_grid(.~rate, scales = "free") +
+  theme_classic() + 
+  xlab(expression(r[S])) +
+  geom_hline(yintercept=464, color="red") +
+  ylab("Code fidelity") -> p.ping4.lev.e
+print(p.ping4.lev.e)
+```
+
+# ING and PING
+
+```{r}
+grid.arrange(p.ing4.power.e + ggtitle("ING"), p.ping4.power.e + ggtitle("PING"), nrow=1)
+grid.arrange(p.ing4.isi.e + ggtitle("ING"), p.ping4.isi.e + ggtitle("PING"), nrow=1)
+grid.arrange(p.ing4.lev.e + ggtitle("ING"), p.ping4.lev.e + ggtitle("PING"), nrow=1)
+```
