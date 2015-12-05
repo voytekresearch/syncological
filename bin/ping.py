@@ -66,6 +66,12 @@ parser.add_argument(
     type=float
 )
 parser.add_argument(
+    "--w_ee",
+    help="Weight E -> E (msiemens)",
+    default=0.1,
+    type=float
+)
+parser.add_argument(
     "--I_e",
     help="E population drive (default: 0.3 0.3)",
     nargs=2,
@@ -90,7 +96,7 @@ except TypeError:
 result = model(
     args.time,
     args.stim, args.rate,
-    args.w_e, args.w_i, args.w_ei, args.w_ie, 
+    args.w_e, args.w_i, args.w_ei, args.w_ie, args.w_ee,
     args.I_e, args.I_i,
     seed=seed
 )

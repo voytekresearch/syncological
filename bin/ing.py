@@ -59,6 +59,12 @@ parser.add_argument(
     type=float
 )
 parser.add_argument(
+    "--w_ee",
+    help="Weight e -> E (msiemens)",
+    default=0.1,
+    type=float
+)
+parser.add_argument(
     "--I_e",
     help="E population drive (default: 0.25 0.25)",
     nargs=2,
@@ -66,12 +72,17 @@ parser.add_argument(
 parser.add_argument(
     "--I_i_sigma",
     help="I drive variance (I_i: 1.1)",
+    type=float,
     default=0.01
 )
 parser.add_argument(
     "--seed",
     help="Seed value",
     default=None
+)
+parser.add_argument(
+    "--stdp",
+    action="store_true"
 )
 args = parser.parse_args()
 
@@ -83,7 +94,8 @@ except TypeError:
 result = model(
     args.time, 
     args.stim, args.rate,
-    args.w_e, args.w_i, args.w_ie,
+    args.w_e, args.w_i, args.w_ie, args.w_ee,
+    args.stdp,
     args.I_e, args.I_i_sigma,
     seed=seed
 )
