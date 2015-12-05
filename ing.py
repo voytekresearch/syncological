@@ -16,9 +16,11 @@ from foof.util import create_psd
 from fakespikes import util as futil
 import pyspike as spk
 
+prefs.codegen.target = 'numpy'  
 
-def model(time, time_stim, rate_stim, w_e, w_i, w_ie, I_e, I_i_sigma=0.01,
-        seed=None):
+
+def model(time, time_stim, rate_stim, w_e, w_i, w_ie, w_ee, stdp, 
+          I_e, I_i_sigma=0.01, seed=None):
     """Model some BRAINS!"""
 
     time = time * second
@@ -28,34 +30,26 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ie, I_e, I_i_sigma=0.01,
     N = 1000
     N_e = int(N * 0.8)
     N_i = int(N * 0.2)
-    N_stim = int(N * 0.2)
+    N_stim = N_e # int(N * 0.2)
 
-    r_e = 10 * Hz
+    r_e = 0 * Hz
     r_i = r_e
 
     cdelay = 2 * ms
 
-    p_ie = 0.4
-    p_ee = 0.4
+    p_ie = 0.1
+    p_ee = 0.1
     p_ii = 1.0
 
-    w_e = w_e * msiemens
+    w_e = w_e / (p_ee * N_e) * msiemens
+    #w_e = w_e * msiemens
     w_i = w_i * msiemens
     w_ie = w_ie / (p_ie * N_i) * msiemens
 
-    w_ee = 0.2 / (p_ee * N_e) * msiemens
+    w_ee = w_ee / (p_ee * N_e) * msiemens
     w_ii = 0.1 / (p_ii * N_i) * msiemens
 
     w_m = 0 / N_e * msiemens  # Read ref 47 to get value
-
-    # --
-    # w_e = w_e * msiemens
-    # w_i = w_i * msiemens
-    # w_ie = w_ie / N_i * msiemens
-    #
-    # w_ee = 0.2 / N_e * msiemens
-    # w_ii = 0.1 / N_i * msiemens
-    # w_m = 0 / N_e * msiemens  # Read ref 47 to get value
 
     # --
     # Model
@@ -70,7 +64,7 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ie, I_e, I_i_sigma=0.01,
     I_i = np.random.normal(I_i, I_i_sigma, N_i) * uamp
     if I_e is None:
         I_e = (0.25, .25)
-
+    
     # After-hyperpolaization (AHP)
     ahp = 5
 
@@ -149,7 +143,7 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ie, I_e, I_i_sigma=0.01,
     """
 
     hh = """
-    dV/dt = (I_Na + I_K + I_l + I_m + I_syn + I) / Cm : volt
+    dV/dt = (I_Na + I_K + I_l + I_m + I_syn + I_stim + I) / Cm : volt
     """ + """
     I_Na = g_Na * (m ** 3) * h * (V_Na - V) : amp
     m = a_m / (a_m + b_m) : 1
@@ -253,8 +247,10 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ie, I_e, I_i_sigma=0.01,
     # External
     C_stim_e = Synapses(
         P_stim, P_e, model=syn_e_stim,
-        pre='g += w_e', connect='i == j'
+        pre='g += w_e'
     )
+    C_stim_e.connect(True, p=p_ee)
+
     C_back_e = Synapses(
         P_e_back, P_e, model=syn_e_in,
         pre='g += w_e', connect='i == j'
@@ -267,17 +263,50 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ie, I_e, I_i_sigma=0.01,
     C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += gSyn_wb')
     C_ii.connect(True, p=p_ii)
 
-    C_ee = Synapses(P_e, P_e, model=syn_ee, pre='g += w_ee', delay=cdelay)
+    if stdp:
+        # params        
+        tau_pre = 20 * ms
+        tau_post = tau_pre
+
+        gmax = w_ee
+        delta_pre = 0.05 
+        delta_post = -delta_pre * tau_pre / tau_post * 1.05
+        delta_pre *= gmax
+        delta_post *= gmax
+        
+        C_ee = Synapses(
+            P_e, P_e,
+            """
+            g : siemens
+            dA_pre/dt = -A_pre / tau_pre : siemens (event-driven)
+            dA_post/dt = -A_post / tau_post : siemens (event-driven)
+            g_ee_post = g : siemens (summed)
+            """,
+            pre="""
+            A_pre += delta_pre
+            g = clip(g + A_post, 0, gmax)
+            """,
+            post="""
+            A_post += delta_post
+            g = clip(g + A_pre, 0, gmax)
+            """,
+            connect=True,
+        )
+        C_ee.g = 'rand() * gmax'  
+    else:
+        C_ee = Synapses(P_e, P_e, model=syn_ee, pre='g += w_ee', delay=cdelay)
     C_ee.connect(True, p=p_ee)
 
+    
     # --
     # Record
     spikes_i = SpikeMonitor(P_i)
     spikes_e = SpikeMonitor(P_e)
     spikes_stim = SpikeMonitor(P_stim)
+    pop_stim = PopulationRateMonitor(P_stim)
     pop_e = PopulationRateMonitor(P_e)
     pop_i = PopulationRateMonitor(P_i)
-    voltages_e = StateMonitor(P_e, ('V', 'g_e', 'g_i', 'g_s'), record=range(11, 31))
+    voltages_e = StateMonitor(P_e, ('V', 'g_e', 'g_i', 'g_s', 'g_ee'), record=True)
     voltages_i = StateMonitor(P_i, ('v', 'g_i'), record=range(11, 31))
 
     # --
@@ -290,6 +319,7 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ie, I_e, I_i_sigma=0.01,
         'spikes_e': spikes_e,
         'spikes_stim': spikes_stim,
         'pop_e': pop_e,
+        'pop_stim': pop_stim,
         'pop_i': pop_i,
         'voltages_e': voltages_e,
         'voltages_i': voltages_i
