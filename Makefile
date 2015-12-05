@@ -81,6 +81,19 @@ ing_exp6:
 		0.1 0.2 0.3 0.4 0.6 0.8 ::: \
 		{1..20}
 
+# Repeat of 5, stdp intial test
+ing_exp7:
+	-mkdir $(DATADIR)/ing_exp7
+	-rm $(DATADIR)/ing_exp7/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ing_exp7/log' \
+		--nice 19 --delay 2 \
+		'python bin/ing.py $(DATADIR)/ing_exp7/rate-{1}_ie-{2}_ee-{3}_j-{4} -t 1.0 --stim 0.75 --rate {1} --w_ie {2} --w_ee {3} --seed {4} --stdp' ::: \
+		5 ::: \
+		0.1 0.5 0.9 ::: \
+		0.2 0.3 0.4 0.5 ::: \
+		{1..20}
+
 # --------------------------------------------------------------------------
 #  Stimulus reacts to w_ei, w_ie and rate
 ping_exp1:
@@ -143,6 +156,45 @@ ping_exp6:
 		'python bin/ping.py $(DATADIR)/ping_exp6/I_e-{1}-{1}_j-{2} -t 1.0 --stim 0.75 --I_e {1} {1} --seed {2}' ::: \
 		0.3 0.4 0.5 0.6 0.8 1.0 ::: \
 		{1..20}
+
+# --------------------------------------------------------------------------
+# EI
+exp10: ing_exp10 ping_exp10
+
+
+ping_exp10:
+	-mkdir $(DATADIR)/ping_exp10
+	-rm $(DATADIR)/ping_exp10/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ping_exp10/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp10/rate-{1}_I_e-{2}_I_i-{3}_I_i_sigma-{4}_w_e-{5}_w_ee-{6}_w_ei-{7}_w_ie-{8}_j-{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9}' ::: \
+		10 20 30 ::: \
+		0.1 0.2 0.3 0.4 0.5 ::: \
+		0.1 ::: \
+		0.01 ::: \
+		0.1 0.2 0.3 0.4 0.5 ::: \
+		0.1 ::: \
+		0.1 0.2 0.3 0.4 0.5 ::: \
+		0.1 0.2 0.3 0.4 0.5 ::: \
+		{1..20} 
+
+ing_exp10:
+	-mkdir $(DATADIR)/ing_exp10
+	-rm $(DATADIR)/ing_exp10/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ing_exp10/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp10/rate-{1}_I_e-{2}_I_i-{3}_I_i_sigma-{4}_w_e-{5}_w_ee-{6}_w_ei-{7}_w_ie-{8}_j-{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9}' ::: \
+		10 20 30 ::: \
+		0.1 0.2 0.3 0.4 0.5 ::: \
+		0.6 ::: \
+		0.01 ::: \
+		0.1 0.2 0.3 0.4 0.5 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		0.1 0.2 0.3 0.4 0.5 ::: \
+		{1..20} 
 
 # --------------------------------------------------------------------------
 #  Stimulus reacts to rate under chaos
