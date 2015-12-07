@@ -217,7 +217,7 @@ def model(time, time_stim, rate_stim,
         tau_post = tau_pre
 
         gmax = w_ee
-        delta_pre = 0.05 
+        delta_pre = 0.005 
         delta_post = -delta_pre * tau_pre / tau_post * 1.05
         delta_pre *= gmax
         delta_post *= gmax
