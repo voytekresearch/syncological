@@ -15,7 +15,7 @@ import pyspike as spk
 
 
 def model(time, time_stim, rate_stim, 
-          w_e, w_i, w_ei, w_ie, w_ee, 
+          w_e, w_i, w_ei, w_ie, w_ee, w_ii,
           I_e, I_i, I_i_sigma, I_e_sigma,
           stdp, seed=None):
     """Model some BRAINS!"""
@@ -44,14 +44,14 @@ def model(time, time_stim, rate_stim,
     w_ie = w_ie / (p_ie * N_i) * msiemens
 
     w_ee = w_ee / (p_ee * N_e) * msiemens
-    w_ii = 0.1 / (p_ii * N_i) * msiemens
+    w_ii = w_ii / (p_ii * N_i) * msiemens
 
     w_m = 0 / N_e * msiemens  # Read ref 47 to get value
 
     # --
     # Model
     np.random.seed(seed)
-    time_step = 0.1 * ms
+    time_step = 0.01 * ms
     decimals = 4
 
     # --
@@ -80,7 +80,7 @@ def model(time, time_stim, rate_stim,
     V_e = 0 * mV
 
     hh = """
-    dV/dt = (I_Na + I_K + I_l + I_m + I_syn + I_stim + I) / Cm : volt
+    dV/dt = (I_Na + I_K + I_l + I_m + I_syn + I) / Cm : volt
     """ + """
     I_Na = g_Na * (m ** 3) * h * (V_Na - V) : amp
     m = a_m / (a_m + b_m) : 1
@@ -102,60 +102,36 @@ def model(time, time_stim, rate_stim,
     """ + """
     I_syn = g_e * (V_e - V) +
         g_ee * (V_e - V) +
-        g_i * (V_i - V) : amp
-    g_e : siemens
-    g_ee : siemens
-    g_i : siemens
-    """ + """
-    I_stim = g_s * (V_e - V) : amp
-    g_s : siemens
-    """ + """
+        g_i * (V_i - V)  + 
+        g_s * (V_e - V) : amp
+    dg_e/dt = -g_e / tau_d_ampa : siemens
+    dg_ee/dt = -g_ee / tau_d_ampa : siemens
+    dg_i/dt = -g_i / tau_d_gaba : siemens
+    dg_s/dt = -g_s / tau_d_ampa : siemens
     I : amp
-    """
-
-    syn_e_in = """
-    dg/dt = -g / tau_d_ampa : siemens
-    g_e_post = g : siemens (summed)
-    """
-
-    syn_e_stim = """
-    dg/dt = -g / tau_d_ampa : siemens
-    g_s_post = g : siemens (summed)
-    """
-
-    syn_e = """
-    dg/dt = -g  * 1 / (tau_d_ampa - tau_r_ampa): siemens
-    g_e_post = g : siemens (summed)
-    """
-
-    syn_ee = """
-    dg/dt = -g / tau_d_ampa : siemens
-    g_ee_post = g : siemens (summed)
-    """
-
-    syn_i = """
-    dg/dt = -g * 1 / (tau_d_gaba - tau_r_gaba) : siemens
-    g_i_post = g : siemens (summed)
     """
 
     P_e = NeuronGroup(
         N_e, model=hh,
         threshold='V >= V_thresh',
-        refractory=3 * ms,
-        method='exponential_euler'
+        refractory=3 * ms
     )
     
     P_i = NeuronGroup(
         N_i,
         model=hh,
         threshold='V >= V_thresh',
-        refractory=3 * ms,
-        method='exponential_euler'
+        refractory=3 * ms
     )
 
-    P_e.V = V_l
-    P_i.V = V_l
+    P_e.V = 'randn() * 0.1 * V_l'
+    P_i.V = 'randn() * 0.1 * V_l'
     
+    P_e.g_e = 'randn() * 0.1 * w_e'
+    P_e.g_ee = 'randn() * 0.1 * w_ee'
+    P_e.g_i = 'randn() * 0.1 * w_ie'
+    P_i.g_i = 'randn() * 0.1 * w_ii'
+
     if np.allclose(I_e_sigma, 0.0):
         P_e.I = I_e * uamp
     else:
@@ -188,35 +164,28 @@ def model(time, time_stim, rate_stim,
     # --
     # Syn
     # External
-    C_stim_e = Synapses(
-        P_stim, P_e, model=syn_e_stim,
-        pre='g += w_e'
-    )
+    C_stim_e = Synapses(P_stim, P_e, pre='g_s += w_e')
     C_stim_e.connect(True, p=p_ee)
-    # C_stim_e = Synapses(P_stim, P_e, model=syn_e_stim,
-    #                    pre='g += w_e', connect='i == j')
-
-    C_back_e = Synapses(P_e_back, P_e, model=syn_e_in, pre='g += w_e',
-                        connect='i == j')
-    C_back_i = Synapses(P_i_back, P_i, model=syn_e_in, pre='g += w_i',
-                        connect='i == j')
 
     # Internal
-    C_ei = Synapses(P_e, P_i, model=syn_e, pre='g += w_ei', delay=delay)
+    C_ei = Synapses(P_e, P_i, pre='g_e += w_ei', delay=delay)
     C_ei.connect(True, p=p_ei)
 
-    C_ie = Synapses(P_i, P_e, model=syn_i, pre='g += w_ie', delay=delay)
+    C_ie = Synapses(P_i, P_e, pre='g_i += w_ie', delay=delay)
     C_ie.connect(True, p=p_ie)
 
-    C_ii = Synapses(P_i, P_i, model=syn_i, pre='g += w_ii', delay=delay)
+    C_ii = Synapses(P_i, P_i, pre='g_i += w_ii', delay=delay)
     C_ii.connect(True, p=p_ii)
 
+    C_ee = Synapses(P_e, P_e, pre='g_ee += w_ee', delay=delay)
+    C_ee.connect(True, p=p_ee)
+ 
     if stdp:
         # params        
         tau_pre = 20 * ms
         tau_post = tau_pre
 
-        gmax = w_ee
+        gmax = w_ee * 10
         delta_pre = 0.005 
         delta_post = -delta_pre * tau_pre / tau_post * 1.05
         delta_pre *= gmax
@@ -225,25 +194,21 @@ def model(time, time_stim, rate_stim,
         C_ee = Synapses(
             P_e, P_e,
             """
-            g : siemens
-            dA_pre/dt = -A_pre / tau_pre : siemens (event-driven)
-            dA_post/dt = -A_post / tau_post : siemens (event-driven)
-            g_ee_post = g : siemens (summed)
+            w_stdp : siemens
+            dApre/dt = -Apre / tau_pre : siemens (event-driven)
+            dApost/dt = -Apost / tau_post : siemens (event-driven)
             """,
             pre="""
-            A_pre += delta_pre
-            g = clip(g + A_post, 0, gmax)
+            g_ee += w_stdp
+            Apre += delta_pre
+            w_stdp = clip(w_stdp + delta_pre, 0, gmax)
             """,
             post="""
-            A_post += delta_post
-            g = clip(g + A_pre, 0, gmax)
-            """,
-            connect=True,
+            Apost += delta_post
+            w_stdp = clip(w_stdp + delta_pre, 0, gmax)
+            """
         )
-        C_ee.g = 'rand() * gmax'  
-    else:
-        C_ee = Synapses(P_e, P_e, model=syn_ee, pre='g += w_ee', delay=delay)
-    C_ee.connect(True, p=p_ee)
+        C_ee.connect(True, p=p_ee)
 
     # --
     # Record
@@ -253,7 +218,8 @@ def model(time, time_stim, rate_stim,
     pop_stim = PopulationRateMonitor(P_stim)
     pop_e = PopulationRateMonitor(P_e)
     pop_i = PopulationRateMonitor(P_i)
-    voltages_e = StateMonitor(P_e, ('V', 'g_e', 'g_i', 'g_s', 'g_ee'), record=True)
+    voltages_e = StateMonitor(P_e, 
+            ('V', 'g_e', 'g_i', 'g_s', 'g_ee'), record=True)
     voltages_i = StateMonitor(P_i, ('V', 'g_e', 'g_i'), record=range(11, 31))
 
     # --
