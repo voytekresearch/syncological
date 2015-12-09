@@ -74,7 +74,7 @@ parser.add_argument(
 parser.add_argument(
     "--w_ii",
     help="Weight I -> I (msiemens)",
-    default=0.1,
+    default=0.5,
     type=float
 )
 parser.add_argument(
