@@ -122,3 +122,29 @@ def gaussian_impulse(t, min_t, max_t, stdev, N, k, decimals=5, prng=None):
 
     return times, idx
 
+
+def create_trials(n, offset, times, idx):
+    """Create simulated trials
+    
+    Params
+    ------
+    n : int
+        Number of trials
+    offset : numeric
+        Offset of each trial from previous
+    times : 1d array-like
+        Spike times
+    idx : 1d array-like
+        Neuron index
+    """
+    n = int(n)
+    times = np.asarray(times)
+    idx = np.asarray(idx)
+
+    trial_times, trial_idxs = [offset + times, ], [idx, ]
+    for i in range(n - 1):
+        last_t = np.max(trial_times[-1])
+        trial_times.append(times + last_t + offset)
+        trial_idxs.append(idx)
+
+    return np.concatenate(trial_times), np.concatenate(trial_idxs)
