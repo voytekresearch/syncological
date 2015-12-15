@@ -159,7 +159,8 @@ ping_exp6:
 
 # --------------------------------------------------------------------------
 # EI
-exp10: ing_exp10 ping_exp10
+# Run with e0aa2d983d513b84b1f16500ca97288b63102b05
+exp10: ping_exp10 ping_exp11 ping_exp12 ping_exp13 ing_exp10 ing_exp11 ing_exp12 ing_exp13 
 
 
 ping_exp10:
@@ -168,7 +169,7 @@ ping_exp10:
 	parallel -j 12 -v \
 		--joblog '$(DATADIR)/ping_exp10/log' \
 		--nice 19 --delay 2 \
-		'python bin/ei.py $(DATADIR)/ping_exp10/rate-{1}_I_e-{2}_I_i-{3}_I_i_sigma-{4}_w_e-{5}_w_ee-{6}_w_ei-{7}_w_ie-{8}_j-{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		'python bin/ei.py $(DATADIR)/ping_exp10/I_e-{2}_{9}_stdp -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
 		30 ::: \
 		0.0 0.02 0.04 0.06 0.08 0.1 ::: \
 		0.1 ::: \
@@ -177,11 +178,28 @@ ping_exp10:
 		0.1 ::: \
 		0.3 ::: \
 		1.2 ::: \
-		{1..20} 
+		{1..20}
 	parallel -j 12 -v \
 		--joblog '$(DATADIR)/ping_exp10/log' \
 		--nice 19 --delay 2 \
-		'python bin/ei.py $(DATADIR)/ping_exp10/rate-{1}_I_e-{2}_I_i-{3}_I_i_sigma-{4}_w_e-{5}_w_ee-{6}_w_ei-{7}_w_ie-{8}_j-{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		'python bin/ei.py $(DATADIR)/ping_exp10/I_e-{2}_{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9}' ::: \
+		30 ::: \
+		0.0 0.02 0.04 0.06 0.08 0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..20}
+
+ping_exp11:
+	-mkdir $(DATADIR)/ping_exp11
+	-rm $(DATADIR)/ping_exp11/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ping_exp11/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp11/w_ie-{8}_{9}_stdp -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
 		30 ::: \
 		0.1 ::: \
 		0.1 ::: \
@@ -192,9 +210,26 @@ ping_exp10:
 		1.0 1.2 1.4 1.6 1.8 2.0 ::: \
 		{1..20}
 	parallel -j 12 -v \
-		--joblog '$(DATADIR)/ping_exp10/log' \
+		--joblog '$(DATADIR)/ping_exp11/log' \
 		--nice 19 --delay 2 \
-		'python bin/ei.py $(DATADIR)/ping_exp10/rate-{1}_I_e-{2}_I_i-{3}_I_i_sigma-{4}_w_e-{5}_w_ee-{6}_w_ei-{7}_w_ie-{8}_j-{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		'python bin/ei.py $(DATADIR)/ping_exp11/w_ie-{8}_{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9}' ::: \
+		30 ::: \
+		0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.0 1.2 1.4 1.6 1.8 2.0 ::: \
+		{1..20}
+
+ping_exp12:
+	-mkdir $(DATADIR)/ping_exp12
+	-rm $(DATADIR)/ping_exp12/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ping_exp12/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp12/w_ee-{6}_{9}_stdp -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
 		30 ::: \
 		0.1 ::: \
 		0.1 ::: \
@@ -205,9 +240,107 @@ ping_exp10:
 		1.2 ::: \
 		{1..20}
 	parallel -j 12 -v \
-		--joblog '$(DATADIR)/ping_exp10/log' \
+		--joblog '$(DATADIR)/ping_exp12/log' \
 		--nice 19 --delay 2 \
-		'python bin/ei.py $(DATADIR)/ping_exp10/rate-{1}_I_e-{2}_I_i-{3}_I_i_sigma-{4}_w_e-{5}_w_ee-{6}_w_ei-{7}_w_ie-{8}_j-{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		'python bin/ei.py $(DATADIR)/ping_exp12/w_ee-{6}_{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9}' ::: \
+		30 ::: \
+		0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 0.2 0.3 0.4 0.5 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..20}
+
+ping_exp13:
+	-mkdir $(DATADIR)/ping_exp13
+	-rm $(DATADIR)/ping_exp13/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ping_exp13/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp13/rate-{1}_{9}_stdp -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		5 10 15 20 25 30 ::: \
+		0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..20}
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ping_exp13/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp13/rate-{1}_{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9}' ::: \
+		5 10 15 20 25 30 ::: \
+		0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..20}
+# 
+ping_exp14:
+	-mkdir $(DATADIR)/ping_exp14
+	-rm $(DATADIR)/ping_exp14/*
+	parallel -j 6 -v \
+		--joblog '$(DATADIR)/ping_exp14/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp14/I_e-{2}_{9}_stdp -t 20 --stim 0.25 --period 1.0 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		30 ::: \
+		0.0 0.02 0.04 0.06 0.08 0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..20}
+
+ping_exp15:
+	-mkdir $(DATADIR)/ping_exp15
+	-rm $(DATADIR)/ping_exp15/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ping_exp15/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp15/w_ie-{8}_{9}_stdp -t 20 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		30 ::: \
+		0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.0 1.2 1.4 1.6 1.8 2.0 ::: \
+		{1..20}
+
+ping_exp16:
+	-mkdir $(DATADIR)/ping_exp16
+	-rm $(DATADIR)/ping_exp16/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ping_exp16/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp16/w_ee-{6}_{9}_stdp -t 20 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		30 ::: \
+		0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 0.2 0.3 0.4 0.5 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..20}
+
+ping_exp17:
+	-mkdir $(DATADIR)/ping_exp17
+	-rm $(DATADIR)/ping_exp17/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ping_exp17/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp17/rate-{1}_{9}_stdp -t 20 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
 		5 10 15 20 25 30 ::: \
 		0.1 ::: \
 		0.1 ::: \
@@ -218,14 +351,14 @@ ping_exp10:
 		1.2 ::: \
 		{1..20}
 
-
+# ING!
 ing_exp10:
 	-mkdir $(DATADIR)/ing_exp10
 	-rm $(DATADIR)/ing_exp10/*
 	parallel -j 12 -v \
 		--joblog '$(DATADIR)/ing_exp10/log' \
 		--nice 19 --delay 2 \
-		'python bin/ei.py $(DATADIR)/ing_exp10/rate-{1}_I_e-{2}_I_i-{3}_I_i_sigma-{4}_w_e-{5}_w_ee-{6}_w_ei-{7}_w_ie-{8}_j-{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		'python bin/ei.py $(DATADIR)/ing_exp10/I_e-{2}_{9}_stdp -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
 		30 ::: \
 		0.0 0.02 0.04 0.06 0.08 0.1 ::: \
 		0.8 ::: \
@@ -234,11 +367,28 @@ ing_exp10:
 		0.1 ::: \
 		0.3 ::: \
 		1.2 ::: \
-		{1..20} 
+		{1..20}
 	parallel -j 12 -v \
 		--joblog '$(DATADIR)/ing_exp10/log' \
 		--nice 19 --delay 2 \
-		'python bin/ei.py $(DATADIR)/ing_exp10/rate-{1}_I_e-{2}_I_i-{3}_I_i_sigma-{4}_w_e-{5}_w_ee-{6}_w_ei-{7}_w_ie-{8}_j-{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		'python bin/ei.py $(DATADIR)/ing_exp10/I_e-{2}_{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9}' ::: \
+		30 ::: \
+		0.0 0.02 0.04 0.06 0.08 0.1 ::: \
+		0.8 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..20}
+
+ing_exp11:
+	-mkdir $(DATADIR)/ing_exp11
+	-rm $(DATADIR)/ing_exp11/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ing_exp11/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp11/w_ie-{8}_{9}_stdp -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
 		30 ::: \
 		0.1 ::: \
 		0.8 ::: \
@@ -249,9 +399,26 @@ ing_exp10:
 		1.0 1.2 1.4 1.6 1.8 2.0 ::: \
 		{1..20}
 	parallel -j 12 -v \
-		--joblog '$(DATADIR)/ing_exp10/log' \
+		--joblog '$(DATADIR)/ing_exp11/log' \
 		--nice 19 --delay 2 \
-		'python bin/ei.py $(DATADIR)/ing_exp10/rate-{1}_I_e-{2}_I_i-{3}_I_i_sigma-{4}_w_e-{5}_w_ee-{6}_w_ei-{7}_w_ie-{8}_j-{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		'python bin/ei.py $(DATADIR)/ing_exp11/w_ie-{8}_{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9}' ::: \
+		30 ::: \
+		0.1 ::: \
+		0.8 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.0 1.2 1.4 1.6 1.8 2.0 ::: \
+		{1..20}
+
+ing_exp12:
+	-mkdir $(DATADIR)/ing_exp12
+	-rm $(DATADIR)/ing_exp12/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ing_exp12/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp12/w_ee-{6}_{9}_stdp -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
 		30 ::: \
 		0.1 ::: \
 		0.8 ::: \
@@ -262,9 +429,39 @@ ing_exp10:
 		1.2 ::: \
 		{1..20}
 	parallel -j 12 -v \
-		--joblog '$(DATADIR)/ing_exp10/log' \
+		--joblog '$(DATADIR)/ing_exp12/log' \
 		--nice 19 --delay 2 \
-		'python bin/ei.py $(DATADIR)/ing_exp10/rate-{1}_I_e-{2}_I_i-{3}_I_i_sigma-{4}_w_e-{5}_w_ee-{6}_w_ei-{7}_w_ie-{8}_j-{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		'python bin/ei.py $(DATADIR)/ing_exp12/w_ee-{6}_{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9}' ::: \
+		30 ::: \
+		0.1 ::: \
+		0.8 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 0.2 0.3 0.4 0.5 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..20}
+
+ing_exp13:
+	-mkdir $(DATADIR)/ing_exp13
+	-rm $(DATADIR)/ing_exp13/*
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ing_exp13/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp13/rate-{1}_{9}_stdp -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		5 10 15 20 25 30 ::: \
+		0.1 ::: \
+		0.8 ::: \
+		0.0 ::: \
+		0.5 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..20}
+	parallel -j 12 -v \
+		--joblog '$(DATADIR)/ing_exp13/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp13/rate-{1}_{9} -t 1 --stim 0.75 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9}' ::: \
 		5 10 15 20 25 30 ::: \
 		0.1 ::: \
 		0.8 ::: \
