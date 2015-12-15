@@ -1,5 +1,5 @@
 ---
-title: "Exp5 - EE effects?"
+title: "Exp10 - Corrected synapses and stdp effects?"
 author: "Erik J Peterson"
 date: ""
 output: html_document
@@ -32,332 +32,350 @@ path <- "/home/ejp/src/syncological/data/"
 Load ING and async.
 
 ```{r load_and_process, echo=FALSE, warning=FALSE, message=FALSE}
-# -----------------------------------------------------------------------
-# Stats
-# --
-# PING
-rates <- c(5)
-
-# Even sampling
-w_eis <- c("1.0", "1.01", "1.02", "1.03", "1.04", "1.04", "1.06", "1.08", "1.09","1.1", "1.2", "1.3", "1.4", "1.5")
-w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0")
-js <- 1:20
-tmppath <- paste(path, "/ping_exp5/", sep="")
-ping1 <- load.ping1.analysis(tmppath, rates, w_eis, w_ies, js)
-
 # --
 # ING
-rates <- c(5)
-
-# Even sampling
-w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0")
 js <- 1:20
-tmppath <- paste(path, "/ing_exp5/", sep="")
-ing1 <- load.ing1.analysis(tmppath, rates, w_ies, js)
+tmppath <- paste(path, "/ing_exp10/", sep="")
+I_es = c("0.0", "0.02", "0.04", "0.06", "0.08", "0.1")
+ing10.I_e <- rbind(load.10.analysis(tmppath, name="I_e", vals=I_es, js, stdp=FALSE),
+                   load.10.analysis(tmppath, name="I_e", vals=I_es, js, stdp=TRUE)
+                   )
+
+tmppath <- paste(path, "/ing_exp11/", sep="")
+w_ies <- c("1.0", "1.2", "1.4", "1.6", "1.8", "2.0")
+ing10.w_ie <- rbind(load.10.analysis(tmppath, name="w_ie", vals=w_ies, js, stdp=FALSE),
+                   load.10.analysis(tmppath, name="w_ie", vals=w_ies, js, stdp=TRUE)
+                   )
+
+tmppath <- paste(path, "/ing_exp12/", sep="")
+w_ees <- c("0.1", "0.2", "0.3", "0.4", "0.5")
+ing10.w_ee <- rbind(load.10.analysis(tmppath, name="w_ee", vals=w_ees, js, stdp=FALSE),
+                   load.10.analysis(tmppath, name="w_ee", vals=w_ees, js, stdp=TRUE)
+                   )
+
+tmppath <- paste(path, "/ing_exp13/", sep="")
+rates <- c("5", "10", "15", "20", "25", "30")
+ing10.rate <- rbind(load.10.analysis(tmppath, name="rate", vals=rates, js, stdp=FALSE),
+                   load.10.analysis(tmppath, name="rate", vals=rates, js, stdp=TRUE)
+                   )
+ing10.rate$rate <- factor(ing10.rate$rate, levels=rates)
 
 # --
-# Async
-rates <- c(5)
-js <- 1:20
-
-tmppath <- paste(path, "/async_exp5_type/", sep="")
-async1 <- load.async1.analysis(tmppath, rates, js)
-
-# -----------------------------------------------------------------------
-# poprates
-# Even sampling
-# ING
-w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0")
-js <- 1:20
-
-tmppath <- paste(path, "/ing_exp5/", sep="")
-ing1.poprate.e <- load.ing1.poprates(tmppath, "e", rates, w_ies, js)
-ing1.poprate.i <- load.ing1.poprates(tmppath, "i", rates, w_ies, js)
-
-ing1.spec <- NULL
-for(w_ie in w_ies){
-  mask <- ing1.poprate.e$w_ie == w_ie
-  prate <- ing1.poprate.e[mask,'poprate']
-  
-  spec <- pspectrum(prate, x.frqsamp=10000)
-  ing1.spec <- rbind(
-    ing1.spec,
-    data.frame(
-      spec=spec$spec, 
-      freq=spec$freq, 
-      w_ie=rep(w_ie, length(spec$spec))
-      )
-    )
-  }
-
-ing1.power <- NULL
-for(w_ie_i in w_ies){
-  sel <- filter(ing1.spec, w_ie == w_ie_i, freq > 10, freq < 30)
-  ing1.power <- rbind(
-    ing1.power,
-    data.frame(
-      M = mean(log10(sel$spec)),
-      SD = sd(log10(sel$spec)),
-      w_ie = w_ie_i 
-    )  
-  )
-}
-
-ing1.spec.pre <- NULL
-for(w_ie_i in w_ies){
-  prate <- filter(ing1.poprate.e, w_ie == w_ie_i, sample_time > .2, sample_time < 0.5)[['poprate']]
-  spec <- pspectrum(prate, x.frqsamp=10000)
-  ing1.spec.pre <- rbind(
-    ing1.spec.pre,
-    data.frame(
-      spec=spec$spec, 
-      freq=spec$freq, 
-      w_ie=rep(w_ie, length(spec$spec))
-      )
-    )
-  }
-
-ing1.power.pre <- NULL
-for(w_ie_i in w_ies){
-  sel <- filter(ing1.spec.pre, w_ie == w_ie_i, freq > 10, freq < 30)
-  ing1.power.pre <- rbind(
-    ing1.power,
-    data.frame(
-      M = mean(log10(sel$spec)),
-      SD = sd(log10(sel$spec)),
-      w_ie = w_ie_i 
-    )  
-  )
-}
-
-ing1.power$stat <- rep("Post", nrow(ing1.power))
-ing1.power.pre$stat <- rep("Pre", nrow(ing1.power.pre))
-ing1.power <- rbind(ing1.power, ing1.power.pre)
-
 # PING
-w_eis <- c("1.0", "1.1", "1.2", "1.3", "1.4", "1.5")
-w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0")
 js <- 1:20
+tmppath <- paste(path, "/ping_exp10/", sep="")
+I_es = c("0.0", "0.02", "0.04", "0.06", "0.08", "0.1")
+ping10.I_e <- rbind(load.10.analysis(tmppath, name="I_e", vals=I_es, js, stdp=FALSE),
+                   load.10.analysis(tmppath, name="I_e", vals=I_es, js, stdp=TRUE)
+                   )
 
-tmppath <- paste(path, "/ping_exp5/", sep="")
-ping1.poprate.e <- load.ping1.poprates(tmppath, "e", rates, w_eis, w_ies, js)
-ping1.poprate.i <- load.ping1.poprates(tmppath, "i", rates, w_eis, w_ies, js)
+tmppath <- paste(path, "/ping_exp11/", sep="")
+w_ies <- c("1.0", "1.2", "1.4", "1.6", "1.8", "2.0")
+ping10.w_ie <- rbind(load.10.analysis(tmppath, name="w_ie", vals=w_ies, js, stdp=FALSE),
+                   load.10.analysis(tmppath, name="w_ie", vals=w_ies, js, stdp=TRUE)
+                   )
 
-ping1.spec <- NULL
-for(w_ie_i in w_ies){
-  for(w_ei_i in w_eis){
-    prate <- filter(ping1.poprate.e, w_ei == w_ei_i, w_ie == w_ie_i)[['poprate']]
-  
-    spec <- pspectrum(prate, x.frqsamp=10000)
-    ping1.spec <- rbind(
-      ping1.spec,
-      data.frame(
-        spec=spec$spec, 
-        freq=spec$freq, 
-        w_ie=rep(w_ie_i, length(spec$spec)),
-        w_ei=rep(w_ei_i, length(spec$spec))
-      )
-    )
-  }
-}
+tmppath <- paste(path, "/ping_exp12/", sep="")
+w_ees <- c("0.1", "0.2", "0.3", "0.4", "0.5")
+ping10.w_ee <- rbind(load.10.analysis(tmppath, name="w_ee", vals=w_ees, js, stdp=FALSE),
+                   load.10.analysis(tmppath, name="w_ee", vals=w_ees, js, stdp=TRUE)
+                   )
 
-ping1.power <- NULL
-for(w_ie_i in w_ies){
-  for(w_ei_i in w_eis){
-    sel <- filter(ping1.spec, w_ei == w_ei_i, w_ie == w_ie_i, freq > 10, freq < 30)
-    ping1.power <- rbind(
-      ping1.power,
-      data.frame(
-        M = mean(log10(sel$spec)),
-        SD = sd(log10(sel$spec)),
-        w_ie = w_ie_i,
-        w_ei = w_ei_i 
-      )  
-    )
-  }
-}
+tmppath <- paste(path, "/ping_exp13/", sep="")
+rates <- c("5", "10", "15", "20", "25", "30")
+ping10.rate <- rbind(load.10.analysis(tmppath, name="rate", vals=rates, js, stdp=FALSE),
+                   load.10.analysis(tmppath, name="rate", vals=rates, js, stdp=TRUE)
+                   )
+ping10.rate$rate <- factor(ping10.rate$rate, levels=rates)
 
-ping1.spec.pre <- NULL
-for(w_ie_i in w_ies){
-  for(w_ei_i in w_eis){
-    prate <- filter(ping1.poprate.e, w_ei == w_ei_i, 
-                    w_ie == w_ie_i, sample_time > .2, sample_time < 0.5)[['poprate']]
-    spec <- pspectrum(prate, x.frqsamp=10000)
-    ping1.spec.pre <- rbind(
-      ping1.spec.pre,
-      data.frame(
-        spec=spec$spec, 
-        freq=spec$freq, 
-        w_ie=rep(w_ie_i, length(spec$spec)),
-        w_ei=rep(w_ei_i, length(spec$spec))
-      )
-    )
-  }
-}
-
-ping1.power.pre <- NULL
-for(w_ie_i in w_ies){
-  for(w_ei_i in w_eis){
-    sel <- filter(ping1.spec.pre, w_ei == w_ei_i, w_ie == w_ie_i, freq > 10, freq < 30)
-    ping1.power.pre <- rbind(
-      ping1.power,
-      data.frame(
-        M = mean(log10(sel$spec)),
-        SD = sd(log10(sel$spec)),
-        w_ie = w_ie_i,
-        w_ei = w_ei_i 
-      )  
-    )
-  }
-}
-
-ping1.power$stat <- rep("Post", nrow(ping1.power))
-ping1.power.pre$stat <- rep("Pre", nrow(ping1.power.pre))
-ping1.power <- rbind(ping1.power, ping1.power.pre)
+# # 
+# # -----------------------------------------------------------------------
+# # poprates
+# # Even sampling
+# # ING
+# w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0")
+# js <- 1:20
+# 
+# tmppath <- paste(path, "/ing_exp5/", sep="")
+# ing1.poprate.e <- load.ing1.poprates(tmppath, "e", rates, w_ies, js)
+# ing1.poprate.i <- load.ing1.poprates(tmppath, "i", rates, w_ies, js)
+# 
+# ing1.spec <- NULL
+# for(w_ie in w_ies){
+#   mask <- ing1.poprate.e$w_ie == w_ie
+#   prate <- ing1.poprate.e[mask,'poprate']
+#   
+#   spec <- pspectrum(prate, x.frqsamp=10000)
+#   ing1.spec <- rbind(
+#     ing1.spec,
+#     data.frame(
+#       spec=spec$spec, 
+#       freq=spec$freq, 
+#       w_ie=rep(w_ie, length(spec$spec))
+#       )
+#     )
+#   }
+# 
+# ing1.power <- NULL
+# for(w_ie_i in w_ies){
+#   sel <- filter(ing1.spec, w_ie == w_ie_i, freq > 10, freq < 30)
+#   ing1.power <- rbind(
+#     ing1.power,
+#     data.frame(
+#       M = mean(log10(sel$spec)),
+#       SD = sd(log10(sel$spec)),
+#       w_ie = w_ie_i 
+#     )  
+#   )
+# }
+# 
+# ing1.spec.pre <- NULL
+# for(w_ie_i in w_ies){
+#   prate <- filter(ing1.poprate.e, w_ie == w_ie_i, sample_time > .2, sample_time < 0.5)[['poprate']]
+#   spec <- pspectrum(prate, x.frqsamp=10000)
+#   ing1.spec.pre <- rbind(
+#     ing1.spec.pre,
+#     data.frame(
+#       spec=spec$spec, 
+#       freq=spec$freq, 
+#       w_ie=rep(w_ie, length(spec$spec))
+#       )
+#     )
+#   }
+# 
+# ing1.power.pre <- NULL
+# for(w_ie_i in w_ies){
+#   sel <- filter(ing1.spec.pre, w_ie == w_ie_i, freq > 10, freq < 30)
+#   ing1.power.pre <- rbind(
+#     ing1.power,
+#     data.frame(
+#       M = mean(log10(sel$spec)),
+#       SD = sd(log10(sel$spec)),
+#       w_ie = w_ie_i 
+#     )  
+#   )
+# }
+# 
+# ing1.power$stat <- rep("Post", nrow(ing1.power))
+# ing1.power.pre$stat <- rep("Pre", nrow(ing1.power.pre))
+# ing1.power <- rbind(ing1.power, ing1.power.pre)
+# 
+# # PING
+# w_eis <- c("1.0", "1.1", "1.2", "1.3", "1.4", "1.5")
+# w_ies <- c("0.1", "0.2", "0.3", "0.4", "0.5", "0.60", "0.70", "0.8", "0.9", "1.0")
+# js <- 1:20
+# 
+# tmppath <- paste(path, "/ping_exp5/", sep="")
+# ping1.poprate.e <- load.ping1.poprates(tmppath, "e", rates, w_eis, w_ies, js)
+# ping1.poprate.i <- load.ping1.poprates(tmppath, "i", rates, w_eis, w_ies, js)
+# 
+# ping1.spec <- NULL
+# for(w_ie_i in w_ies){
+#   for(w_ei_i in w_eis){
+#     prate <- filter(ping1.poprate.e, w_ei == w_ei_i, w_ie == w_ie_i)[['poprate']]
+#   
+#     spec <- pspectrum(prate, x.frqsamp=10000)
+#     ping1.spec <- rbind(
+#       ping1.spec,
+#       data.frame(
+#         spec=spec$spec, 
+#         freq=spec$freq, 
+#         w_ie=rep(w_ie_i, length(spec$spec)),
+#         w_ei=rep(w_ei_i, length(spec$spec))
+#       )
+#     )
+#   }
+# }
+# 
+# ping1.power <- NULL
+# for(w_ie_i in w_ies){
+#   for(w_ei_i in w_eis){
+#     sel <- filter(ping1.spec, w_ei == w_ei_i, w_ie == w_ie_i, freq > 10, freq < 30)
+#     ping1.power <- rbind(
+#       ping1.power,
+#       data.frame(
+#         M = mean(log10(sel$spec)),
+#         SD = sd(log10(sel$spec)),
+#         w_ie = w_ie_i,
+#         w_ei = w_ei_i 
+#       )  
+#     )
+#   }
+# }
+# 
+# ping1.spec.pre <- NULL
+# for(w_ie_i in w_ies){
+#   for(w_ei_i in w_eis){
+#     prate <- filter(ping1.poprate.e, w_ei == w_ei_i, 
+#                     w_ie == w_ie_i, sample_time > .2, sample_time < 0.5)[['poprate']]
+#     spec <- pspectrum(prate, x.frqsamp=10000)
+#     ping1.spec.pre <- rbind(
+#       ping1.spec.pre,
+#       data.frame(
+#         spec=spec$spec, 
+#         freq=spec$freq, 
+#         w_ie=rep(w_ie_i, length(spec$spec)),
+#         w_ei=rep(w_ei_i, length(spec$spec))
+#       )
+#     )
+#   }
+# }
+# 
+# ping1.power.pre <- NULL
+# for(w_ie_i in w_ies){
+#   for(w_ei_i in w_eis){
+#     sel <- filter(ping1.spec.pre, w_ei == w_ei_i, w_ie == w_ie_i, freq > 10, freq < 30)
+#     ping1.power.pre <- rbind(
+#       ping1.power,
+#       data.frame(
+#         M = mean(log10(sel$spec)),
+#         SD = sd(log10(sel$spec)),
+#         w_ie = w_ie_i,
+#         w_ei = w_ei_i 
+#       )  
+#     )
+#   }
+# }
+# 
+# ping1.power$stat <- rep("Post", nrow(ping1.power))
+# ping1.power.pre$stat <- rep("Pre", nrow(ping1.power.pre))
+# ping1.power <- rbind(ping1.power, ping1.power.pre)
 ```
 
-```{r load_and_process_exp2_3}
-js <- 1:20
 
-# --
-# ING 2
-# states
-I_es <- c("0.1", "0.2", "0.3", "0.4", "0.6", "0.8")
-tmppath <- paste(path, "/ing_exp2/", sep="")
-ing2 <- load.ing2.analysis(tmppath, I_es, js)
 
-ing2 %>%
-  group_by(stat, I_e) %>%
+```{r ing10=13}
+ing10.I_e %>%
+  group_by(stdp, stat, I_e) %>%
   summarise(M=mean(x), SD=sd(x)) ->
-  ing2.m
+  ing10.I_e.m
 
-# poprates
-I_es <- c("0.1", "0.2", "0.3", "0.4", "0.6", "0.8")
-tmppath <- paste(path, "/ing_exp2/", sep="")
-ing2.poprate.e <- load.ing2.poprates(tmppath, "e", I_es, js)
-ing2.poprate.i <- load.ing2.poprates(tmppath, "i", I_es, js)
-
-ing2.spec <- NULL
-for(I_e_i in I_es){
-  prate <- filter(ing2.poprate.e, I_e == I_e_i)[['poprate']]
-  spec <- pspectrum(prate, x.frqsamp=10000)
-  ing2.spec <- rbind(
-    ing2.spec,
-    data.frame(
-      spec=spec$spec, 
-      freq=spec$freq, 
-      I_e=rep(I_e_i, length(spec$spec))
-    )
-  )
-}
-
-ing2.power <- NULL
-for(I_e_i in I_es){
-  sel <- filter(ing2.spec, I_e == I_e_i, freq > 10, freq < 30)
-  ing2.power <- rbind(
-    ing2.power,
-    data.frame(
-      M = mean(log10(sel$spec)),
-      SD = sd(log10(sel$spec)),
-      I_e = I_e_i 
-    )  
-  )
-}
-
-
-# --
-# PING 2
-I_es <- c("0.3", "0.4", "0.5", "0.6", "0.8", "1.0")
-tmppath <- paste(path, "/ping_exp2/", sep="")
-ping2 <- load.ing2.analysis(tmppath, I_es, js) # works for ping too (in this case)
-
-ping2 %>%
-  group_by(stat, I_e) %>%
+ing10.w_ie %>%
+  group_by(stdp, stat, w_ie) %>%
   summarise(M=mean(x), SD=sd(x)) ->
-  ping2.m
+  ing10.w_ie.m
 
-# poprates
-I_es <- c("0.3", "0.4", "0.5", "0.6", "0.8", "1.0")
-tmppath <- paste(path, "/ping_exp2/", sep="")
-ping2.poprate.e <- load.ing2.poprates(tmppath, "e", I_es, js) # can use the ING loader here
-ping2.poprate.i <- load.ing2.poprates(tmppath, "i", I_es, js)
-
-ping2.spec <- NULL
-for(I_e_i in I_es){
-  prate <- filter(ping2.poprate.e, I_e == I_e_i)[['poprate']]
-  spec <- pspectrum(prate, x.frqsamp=10000)
-  ping2.spec <- rbind(
-    ping2.spec,
-    data.frame(
-      spec=spec$spec, 
-      freq=spec$freq, 
-      I_e=rep(I_e_i, length(spec$spec))
-    )
-  )
-}
-
-ping2.power <- NULL
-for(I_e_i in I_es){
-  sel <- filter(ping2.spec, I_e == I_e_i, freq > 10, freq < 30)
-  ping2.power <- rbind(
-    ping2.power,
-    data.frame(
-      M = mean(log10(sel$spec)),
-      SD = sd(log10(sel$spec)),
-      I_e = I_e_i 
-    )  
-  )
-}
-
-
-# --
-# ING 3
-I_i_sigmas <-c("0.01", "0.02", "0.04", "0.06", "0.08", "0.1")
-
-tmppath <- paste(path, "/ing_exp3/", sep="")
-ing3 <- load.ing3.analysis(tmppath, I_i_sigmas, js)
-ing3 %>%
-  group_by(stat, I_i_sigma) %>%
+ing10.w_ee %>%
+  group_by(stdp, stat, w_ee) %>%
   summarise(M=mean(x), SD=sd(x)) ->
-  ing3.m
+  ing10.w_ee.m
 
-I_i_sigmas <-c("0.01", "0.02", "0.04", "0.06", "0.08", "0.1")
-tmppath <- paste(path, "/ing_exp3/", sep="")
-ing3.poprate.e <- load.ing3.poprates(tmppath, "e", I_i_sigmas, js) # can use the ING loader here
-ing3.poprate.i <- load.ing3.poprates(tmppath, "i", I_i_sigmas, js)
-```
-
-```{r ing1}
-ing1 %>%
-  group_by(stat, rate, w_ie) %>%
+ing10.rate %>%
+  group_by(stdp, stat, rate) %>%
   summarise(M=mean(x), SD=sd(x)) ->
-  ing1.m
+  ing10.rate.m
 
 limits <- aes(ymax = M + SD, ymin=M - SD)
 
-ing1.power %>% 
-  filter(stat %in% c("Post")) %>%
-  ggplot(aes(x=w_ie, y=M, group=w_ie)) + 
-  scale_color_manual(values=c("black", "grey")) +
-  geom_point(size=4, position = "jitter") +
-  theme_classic() + 
-  theme(legend.position="top") +
-  xlab(expression(w[IE])) +
-  ylab("log(Power)") -> p.ing1.power.e
-# print(p.ing1.isi.e)
+# ing1.power %>% 
+#   filter(stat %in% c("Post")) %>%
+#   ggplot(aes(x=w_ie, y=M, group=w_ie)) + 
+#   scale_color_manual(values=c("black", "grey")) +
+#   geom_point(size=4, position = "jitter") +
+#   theme_classic() + 
+#   theme(legend.position="top") +
+#   xlab(expression(w[IE])) +
+#   ylab("log(Power)") -> p.ing1.power.e
+# # print(p.ing1.isi.e)
 
-ing1.m %>% 
+ing10.I_e.m %>% 
   filter(stat %in% c("isi_e")) %>%
-  ggplot(aes(x=w_ie, y=M, group=w_ie)) + 
+  ggplot(aes(x=I_e, y=M, group=I_e, color=stdp)) + 
   geom_errorbar(limits, width=0.2, color="grey") + 
   geom_point(size=4) +
-  geom_hline(yintercept=0.82, color="red") +
-  geom_hline(yintercept=0.50, color="grey") +
-  ylim(0.7, .9) +
+  ylim(0.8, 1) +
+  theme_classic() + 
+  xlab(expression(I[E])) +
+  ylab("ISI synchrony") -> plot.ing10.I_e.m
+# print(plot.ing10.I_e.m)
+
+ing10.w_ie.m %>% 
+  filter(stat %in% c("isi_e")) %>%
+  ggplot(aes(x=w_ie, y=M, group=w_ie, color=stdp)) + 
+  geom_errorbar(limits, width=0.2, color="grey") + 
+  geom_point(size=4) +
+  ylim(0.8, 1) +
   theme_classic() + 
   xlab(expression(w[IE])) +
-  ylab("ISI synchrony") -> p.ing1.isi.e
-# print(p.ing1.isi.e)
+  ylab("ISI synchrony") -> plot.ing10.w_ie.m
+
+ing10.w_ee.m %>% 
+  filter(stat %in% c("isi_e")) %>%
+  ggplot(aes(x=w_ee, y=M, group=w_ee, color=stdp)) + 
+  geom_errorbar(limits, width=0.2, color="grey") + 
+  geom_point(size=4) +
+  ylim(0.8, 1) +
+  theme_classic() + 
+  xlab(expression(w[EE])) +
+  ylab("ISI synchrony") -> plot.ing10.w_ee.m
+
+ing10.rate.m %>% 
+  filter(stat %in% c("isi_e")) %>%
+  ggplot(aes(x=rate, y=M, group=rate, color=stdp)) + 
+  geom_errorbar(limits, width=0.2, color="grey") + 
+  geom_point(size=4) +
+  ylim(0.8, 1) +
+  theme_classic() + 
+  xlab("rate") +
+  ylab("ISI synchrony") -> plot.ing10.rate.m
+
+laym = t(rbind(
+  c(1, 2, 3, 4)
+))
+grid.arrange(plot.ing10.I_e.m, plot.ing10.w_ie.m, plot.ing10.w_ee.m, plot.ing10.rate.m, layout_matrix=laym)
+
+# lev
+ing10.I_e.m %>% 
+  filter(stat %in% c("lev_e")) %>%
+  filter(stdp == TRUE) %>%
+  ggplot(aes(x=I_e, y=M, group=I_e, color=stdp)) + 
+  geom_errorbar(limits, width=0.2, color="grey") + 
+  geom_point(size=4) +
+#   ylim(0.8, 1) +
+  theme_classic() + 
+  xlab(expression(I[E])) +
+  ylab("ISI synchrony") -> plot.lev.ing10.I_e.m
+# print(plot.ing10.I_e.m)
+
+ing10.w_ie.m %>% 
+  filter(stat %in% c("lev_e")) %>%
+  filter(stdp == TRUE) %>%
+  ggplot(aes(x=w_ie, y=M, group=w_ie, color=stdp)) + 
+  geom_errorbar(limits, width=0.2, color="grey") + 
+  geom_point(size=4) +
+#   ylim(0.8, 1) +
+  theme_classic() + 
+  xlab(expression(w[IE])) +
+  ylab("ISI synchrony") -> plot.lev.ing10.w_ie.m
+
+ing10.w_ee.m %>% 
+  filter(stat %in% c("lev_e")) %>%
+  filter(stdp == TRUE) %>%
+  ggplot(aes(x=w_ee, y=M, group=w_ee, color=stdp)) + 
+  geom_errorbar(limits, width=0.2, color="grey") + 
+  geom_point(size=4) +
+#   ylim(0.8, 1) +
+  theme_classic() + 
+  xlab(expression(w[EE])) +
+  ylab("ISI synchrony") -> plot.lev.ing10.w_ee.m
+
+ing10.rate.m %>% 
+  filter(stat %in% c("lev_e")) %>%
+  filter(stdp == TRUE) %>%
+  ggplot(aes(x=rate, y=M, group=rate, color=stdp)) + 
+  geom_errorbar(limits, width=0.2, color="grey") + 
+  geom_point(size=4) +
+#   ylim(0.8, 1) +
+  theme_classic() + 
+  xlab("rate") +
+  ylab("ISI synchrony") -> plot.lev.ing10.rate.m
+
+# print(plot.ing10.w_ie.m)
+
+laym = t(rbind(
+  c(1, 2, 3, 4)
+))
+grid.arrange(plot.lev.ing10.I_e.m, plot.lev.ing10.w_ie.m, plot.lev.ing10.w_ee.m, plot.lev.ing10.rate.m, layout_matrix=laym)
 
 # ing1.m$stat <- revalue(ing1.m$stat, c("fano_e"="Post", "fano_pre_e"="Pre"))
 # ing1.m %>% 
@@ -377,30 +395,30 @@ ing1.m %>%
 #   xlab(expression(w[IE])) -> p.ing1.fano.e
 # # print(p.ing1.fano.e)
 
-ing1.m %>% 
-  filter(stat %in% c("lev_e")) %>%
-  ggplot(aes(x=w_ie, y=M, group=w_ie)) + 
-  geom_errorbar(limits, width=0.2, color="grey") + 
-  geom_point(size=4) +
-  # stat_summary(fun.data = "mean_cl_boot", size=1) +
-  # geom_boxplot(width=0.1) + 
-  # ylim(0.5, 1) +
-  #     facet_grid(.~rate, scales = "free") +
-  theme_classic() + 
-  xlab(expression(w[IE])) +
-  geom_hline(yintercept=464, color="red") +
-  ylab("Code fidelity") -> p.ing1.lev.e
-# print(p.ing1.lev.e)
-
+# ing1.m %>% 
+#   filter(stat %in% c("lev_e")) %>%
+#   ggplot(aes(x=w_ie, y=M, group=w_ie)) + 
+#   geom_errorbar(limits, width=0.2, color="grey") + 
+#   geom_point(size=4) +
+#   # stat_summary(fun.data = "mean_cl_boot", size=1) +
+#   # geom_boxplot(width=0.1) + 
+#   # ylim(0.5, 1) +
+#   #     facet_grid(.~rate, scales = "free") +
+#   theme_classic() + 
+#   xlab(expression(w[IE])) +
+#   geom_hline(yintercept=464, color="red") +
+#   ylab("Code fidelity") -> p.ing1.lev.e
+# # print(p.ing1.lev.e)
+# 
+# # laym = rbind(
+# #   c(4, 4, 4, 1, 1, 1),
+# #   c(2, 2, 2, 3, 3, 3)
+# # )
 # laym = rbind(
-#   c(4, 4, 4, 1, 1, 1),
-#   c(2, 2, 2, 3, 3, 3)
+#   c(1, 2 ,3)
 # )
-laym = rbind(
-  c(1, 2 ,3)
-)
-grid.arrange(p.ing1.power.e, p.ing1.isi.e, p.ing1.lev.e, layout_matrix=laym)
-# Need power now
+# grid.arrange(p.ing1.power.e, p.ing1.isi.e, p.ing1.lev.e, layout_matrix=laym)
+# # Need power now
 ```
 
 ```{r ing2}

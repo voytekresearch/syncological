@@ -142,9 +142,13 @@ def create_trials(n, offset, times, idx):
     idx = np.asarray(idx)
 
     trial_times, trial_idxs = [offset + times, ], [idx, ]
+    onsets = [offset + times[0],]
+
     for i in range(n - 1):
         last_t = np.max(trial_times[-1])
         trial_times.append(times + last_t + offset)
         trial_idxs.append(idx)
+        onsets.append(times[0] + last_t + offset)
 
-    return np.concatenate(trial_times), np.concatenate(trial_idxs)
+    return (np.concatenate(trial_times), np.concatenate(trial_idxs),
+            np.asarray(onsets))
