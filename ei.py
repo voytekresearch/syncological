@@ -14,20 +14,34 @@ from fakespikes import util as futil
 import pyspike as spk
 
 
-def model(time, time_stim, rate_stim, 
+def model(name, time, N_stim, ts_stim, idx_stim, period,
           w_e, w_i, w_ei, w_ie, w_ee, w_ii,
           I_e, I_i, I_i_sigma, I_e_sigma,
           stdp, seed=None):
     """Model some BRAINS!"""
 
-    time = time * second
-    time_stim = time_stim * second
+    np.random.seed(seed)
 
+    # Reconile time and period
+    if not np.allclose(time % period, 0):
+        raise ValueError("time must be an integer multiple of period")
+    N_trials = int(time / period) 
+
+    time = time * second
+    period = period * second
+
+    time_step = 0.01 * ms
+    defaultclock.dt = time_step
+
+    # time += time_step  # SpikeGeneratorGroup compatibility
+    # period += time_step
+
+    # --
+    # Model
     # Network
     N = 400
     N_e = int(N * 0.8)
     N_i = int(N * 0.2)
-    N_stim = N_e # int(N * 0.2)
 
     r_e = 0 * Hz
     r_i = r_e
@@ -42,17 +56,9 @@ def model(time, time_stim, rate_stim,
     w_i = w_i * msiemens
     w_ei = w_ei / (p_ei * N_e) * msiemens
     w_ie = w_ie / (p_ie * N_i) * msiemens
-
     w_ee = w_ee / (p_ee * N_e) * msiemens
     w_ii = w_ii / (p_ii * N_i) * msiemens
-
     w_m = 0 / N_e * msiemens  # Read ref 47 to get value
-
-    # --
-    # Model
-    np.random.seed(seed)
-    time_step = 0.01 * ms
-    decimals = 4
 
     # --
     # Fixed
@@ -116,7 +122,7 @@ def model(time, time_stim, rate_stim,
         threshold='V >= V_thresh',
         refractory=3 * ms
     )
-    
+
     P_i = NeuronGroup(
         N_i,
         model=hh,
@@ -126,7 +132,7 @@ def model(time, time_stim, rate_stim,
 
     P_e.V = 'randn() * 0.1 * V_l'
     P_i.V = 'randn() * 0.1 * V_l'
-    
+
     P_e.g_e = 'randn() * 0.1 * w_e'
     P_e.g_ee = 'randn() * 0.1 * w_ee'
     P_e.g_i = 'randn() * 0.1 * w_ie'
@@ -135,31 +141,17 @@ def model(time, time_stim, rate_stim,
     if np.allclose(I_e_sigma, 0.0):
         P_e.I = I_e * uamp
     else:
-        P_e.I = np.random.normal(I_e, I_e_sigma, N_e) * uamp 
+        P_e.I = np.random.normal(I_e, I_e_sigma, N_e) * uamp
 
     if np.allclose(I_i_sigma, 0.0):
         P_i.I = I_i * uamp
     else:
-        P_i.I = np.random.normal(I_i, I_i_sigma, N_i) * uamp 
-  
+        P_i.I = np.random.normal(I_i, I_i_sigma, N_i) * uamp
+
     P_e_back = PoissonGroup(N_e, rates=r_e)
     P_i_back = PoissonGroup(N_i, rates=r_i)
-
-    # --
-    # Stimulus
-    time_stim = time_stim / second
-    window = 500 / 1000.
-    t_min = time_stim - window / 2
-    t_max = time_stim + window / 2
-    stdev = 100 / 1000.  # 100 ms
-
-    k = N_stim * int(rate_stim / 2)
-    ts, idxs = gaussian_impulse(
-        time_stim, t_min,
-        t_max, stdev, N_stim, k,
-        decimals=decimals
-    )
-    P_stim = SpikeGeneratorGroup(N_stim, idxs, ts * second)
+    P_stim = SpikeGeneratorGroup(N_stim, idx_stim, ts_stim * second, 
+            period=period)
 
     # --
     # Syn
@@ -179,18 +171,16 @@ def model(time, time_stim, rate_stim,
 
     C_ee = Synapses(P_e, P_e, pre='g_ee += w_ee', delay=delay)
     C_ee.connect(True, p=p_ee)
- 
     if stdp:
-        # params        
         tau_pre = 20 * ms
         tau_post = tau_pre
 
         gmax = w_ee * 10
-        delta_pre = 0.005 
+        delta_pre = 0.005
         delta_post = -delta_pre * tau_pre / tau_post * 1.05
         delta_pre *= gmax
         delta_post *= gmax
-        
+
         C_ee = Synapses(
             P_e, P_e,
             """
@@ -211,32 +201,63 @@ def model(time, time_stim, rate_stim,
         C_ee.connect(True, p=p_ee)
 
     # --
-    # Record
-    spikes_i = SpikeMonitor(P_i)
-    spikes_e = SpikeMonitor(P_e)
-    spikes_stim = SpikeMonitor(P_stim)
-    pop_stim = PopulationRateMonitor(P_stim)
-    pop_e = PopulationRateMonitor(P_e)
-    pop_i = PopulationRateMonitor(P_i)
-    voltages_e = StateMonitor(P_e, 
-            ('V', 'g_e', 'g_i', 'g_s', 'g_ee'), record=True)
-    voltages_i = StateMonitor(P_i, ('V', 'g_e', 'g_i'), record=range(11, 31))
+    # Create network and save
+    net = Network(P_e, P_i, P_e_back, P_i_back, P_stim, C_ee, C_ii,
+                  C_ie, C_ei, C_stim_e)
+    net.store('trials')
 
     # --
     # Go!
-    defaultclock.dt = time_step
-    run(time, report='text')
+    # Loop over trials (if present)
+    results = []
+    t_last = 0
+    for k in range(N_trials):
+        print("Trial {0}".format(k))
 
-    return {
-        'spikes_i': spikes_i,
-        'spikes_e': spikes_e,
-        'spikes_stim': spikes_stim,
-        'pop_e': pop_e,
-        'pop_stim' : pop_stim,
-        'pop_i': pop_i,
-        'voltages_e': voltages_e,
-        'voltages_i': voltages_i
-    }
+        net.restore('trials')
+
+        # Add fresh monitors before run
+        spikes_i = SpikeMonitor(P_i)
+        spikes_e = SpikeMonitor(P_e)
+        spikes_stim = SpikeMonitor(P_stim)
+        pop_stim = PopulationRateMonitor(P_stim)
+        pop_e = PopulationRateMonitor(P_e)
+        pop_i = PopulationRateMonitor(P_i)
+        weights = StateMonitor(C_ee, 'w_stdp', record=True)
+        traces_e = StateMonitor(P_e, ('V', 'g_e', 'g_i', 'g_s', 'g_ee'),
+                                record=True)
+        traces_i = StateMonitor(P_i, ('V', 'g_e', 'g_i'),
+                                record=range(11, 31))
+        monitors = [spikes_i, spikes_e, spikes_stim,
+                    pop_stim, pop_e, pop_i, traces_e, traces_i,
+                    weights]
+
+        net.add(monitors)
+        net.run(period, report='text')
+
+        # Then save and analyze the results, discarding the
+        # (now stale) monitors
+        print("Saving results")
+        result = {
+            'spikes_i': spikes_i,
+            'spikes_e': spikes_e,
+            'spikes_stim': spikes_stim,
+            'pop_e': pop_e,
+            'pop_stim': pop_stim,
+            'pop_i': pop_i,
+            'traces_e': traces_e,
+            'traces_i': traces_i,
+            'weights': weights
+        }
+ 
+        trial_name = name + "_trial-" + str(k)
+        save_result(trial_name, result)
+        analyze_result(trial_name, result, fs=100000, save=True)
+
+        net.remove(monitors)
+        net.store('trials')
+
+    return result  # return the last result only
 
 
 def save_result(name, result, fs=10000):
@@ -245,8 +266,8 @@ def save_result(name, result, fs=10000):
     spikes_stim = result['spikes_i']
     pop_e = result['pop_e']
     pop_i = result['pop_i']
-    voltages_e = result['voltages_e']
-    voltages_i = result['voltages_i']
+    traces_e = result['traces_e']
+    traces_i = result['traces_i']
 
     # --
     # Save full
@@ -257,16 +278,16 @@ def save_result(name, result, fs=10000):
     np.savetxt(name + '_spiketimes_i.csv',
                np.vstack([spikes_i.i, spikes_i.t, ]).transpose(),
                fmt='%.i, %.5f')
-    np.savetxt(name + '_spiketimes_stim.csv',
+    np.savetxt(name + '_spikets_stim.csv',
                np.vstack([spikes_stim.i, spikes_stim.t, ]).transpose(),
                fmt='%.i, %.5f')
 
     # Example trace
     np.savetxt(name + '_exampletrace_e.csv',
-               np.vstack([voltages_e.t, voltages_e.V[0], ]).transpose(),
+               np.vstack([traces_e.t, traces_e.V[0], ]).transpose(),
                fmt='%.5f, %.4f')
     np.savetxt(name + '_exampletrace_i.csv',
-               np.vstack([voltages_i.t, voltages_i.V[0], ]).transpose(),
+               np.vstack([traces_i.t, traces_i.V[0], ]).transpose(),
                fmt='%.5f, %.4f')
 
     # Pop rate
@@ -277,21 +298,24 @@ def save_result(name, result, fs=10000):
                np.vstack([pop_i.t, pop_i.rate / Hz, ]).transpose(),
                fmt='%.5f, %.1f')
 
+    # TODO save weights
+
     # LFP
-    lfp = (np.abs(voltages_e.g_e.sum(0)) +
-           np.abs(voltages_e.g_i.sum(0)) +
-           np.abs(voltages_i.g_e.sum(0)) +
-           np.abs(voltages_i.g_i.sum(0)))
+    lfp = (np.abs(traces_e.g_e.sum(0)) +
+           np.abs(traces_e.g_i.sum(0)) +
+           np.abs(traces_e.g_ee.sum(0)))
     np.savetxt(name + '_lfp.csv', zscore(lfp), fmt='%.2f')
 
     # PSD
-    lfp = lfp[1000:]  # Drop initial spike
+    lfp = lfp[:]  # Drop initial spike
     freqs, spec = create_psd(lfp, fs)
     np.savetxt(name + '_psd.csv', np.vstack(
         [freqs, np.log10(spec)]).transpose(), fmt='%.1f, %.3f')
 
 
-def analyze_result(name, stim, result, fs=10000, save=True):
+# TODO Add/Update analysis window args
+# TODO SFC?
+def analyze_result(name, result, fs=100000, save=True):
     analysis = {}
 
     spikes_e = result['spikes_e']
@@ -303,44 +327,12 @@ def analyze_result(name, stim, result, fs=10000, save=True):
     ns_i, ts_i = spikes_i.i, spikes_i.t / second
     ns_stim, ts_stim = spikes_stim.i, spikes_stim.t / second
 
-    # Keep only neurons 0-199
-    mask = ns_e < 200
-    ns_e, ts_e = ns_e[mask], ts_e[mask]
-    mask = ns_i < 200
-    ns_i, ts_i = ns_i[mask], ts_i[mask]
-
-    # -------------------------------------------------------------
-    # Drop first 200 ms
-    mask = ts_e > 0.2
-    ns_e, ts_e = ns_e[mask], ts_e[mask]
-    mask = ts_i > 0.2
-    ns_i, ts_i = ns_i[mask], ts_i[mask]
-
-    # -------------------------------------------------------------
-    # Look at pre-stim first
-    mask = ts_e < stim
-    ns_pre_e, ts_pre_e = ns_e[mask], ts_e[mask]
-    mask = ts_i < stim
-    ns_pre_i, ts_pre_i = ns_i[mask], ts_i[mask]
-
-    # kappa
-    r_e = futil.kappa(ns_pre_e, ts_pre_e, ns_pre_e, ts_pre_e, (0, 1), 1.0 / 1000)  # 1 ms bins
-    analysis['kappa_pre_e'] = r_e
-    r_i = futil.kappa(ns_pre_i, ts_pre_i, ns_pre_i, ts_pre_i, (0, 1), 1.0 / 1000)  # 1 ms bins
-    analysis['kappa_pre_i'] = r_i
-
-    # fano
-    fanos_e = futil.fano(ns_pre_e, ts_pre_e)
-    mfano_e = np.nanmean([x for x in fanos_e.values()])
-    analysis['fano_pre_e'] = mfano_e
-
-    # -------------------------------------------------------------
-    # Drop times before stim time
-    mask = ts_e > stim
-    ns_e, ts_e = ns_e[mask], ts_e[mask]
-    mask = ts_i > stim
-    ns_i, ts_i = ns_i[mask], ts_i[mask]
-
+    # # Keep only neurons 0-199
+    # mask = ns_e < 200
+    # ns_e, ts_e = ns_e[mask], ts_e[mask]
+    # mask = ns_i < 200
+    # ns_i, ts_i = ns_i[mask], ts_i[mask]
+ 
     # kappa
     r_e = futil.kappa(ns_e, ts_e, ns_e, ts_e, (0, 1), 1.0 / 1000)  # 1 ms bins
     analysis['kappa_e'] = r_e
@@ -353,8 +345,8 @@ def analyze_result(name, stim, result, fs=10000, save=True):
     analysis['fano_e'] = mfano_e
 
     # ISI and SPIKE
-    sto_e = spk.SpikeTrain(ts_e, (0.5, 1))
-    sto_stim = spk.SpikeTrain(ts_stim, (0.5, 1))
+    sto_e = spk.SpikeTrain(ts_e, (ts_e.min(), ts_e.max()))
+    sto_stim = spk.SpikeTrain(ts_stim, (ts_stim.min(), ts_stim.max()))
     sto_e.sort()
     sto_stim.sort()
     isi = spk.isi_distance(sto_stim, sto_e)
@@ -372,5 +364,5 @@ def analyze_result(name, stim, result, fs=10000, save=True):
         with open(name + '_analysis.csv', 'w') as f:
             [f.write('{0},{1}\n'.format(k, v)) for k, v in analysis.items()]
 
+    # TODO SFC
     return analysis
-

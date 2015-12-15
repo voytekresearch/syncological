@@ -12,6 +12,7 @@ import argparse
 import numpy as np
 from brian2 import *
 from syncological.ei import model, analyze_result, save_result
+from syncological.inputs import gaussian_impulse
 
 
 parser = argparse.ArgumentParser(
@@ -24,15 +25,20 @@ parser.add_argument(
 )
 parser.add_argument(
     "-t", "--time",
-    help="Simulation run time (in ms)",
-    default=2,
+    help="Simulation run time (in sec)",
+    default=1,
     type=float
 )
 parser.add_argument(
     "--stim",
-    help="Simulus times (in ms)",
-    nargs='+',
-    default=[1.5],
+    help="Simulus times (in sec)",
+    default=0.5,
+    type=float
+)
+parser.add_argument(
+    "--period",
+    help="Period of repeated stimulation (in sec)",
+    default=1,
     type=float
 )
 parser.add_argument(
@@ -117,11 +123,37 @@ try:
 except TypeError:
     seed = None
 
+# --
+# Stimulus
+# Times should be in seconds
+N = 400  # should match N in `ei.py`
+N_stim = int(N * 0.8)
+time_stim = args.stim
+
+window = 0.5 # Fixed 0.5 s total duration
+t_min = time_stim - window / 2
+t_max = time_stim + window / 2
+stdev = 100 / 1000.  # 100 ms
+decimals = 4
+
+k = N_stim * int(args.rate / 2)  # total spike number
+ts, idxs = gaussian_impulse(
+    time_stim, t_min,
+    t_max, stdev, N_stim, k,
+    decimals=decimals,
+    prng=np.random.RandomState(args.seed)
+)
+
+# --
+# Run
 result = model(
-    args.time, args.stim, args.rate,
+    args.name, args.time, N_stim, ts, idxs, args.period,
     args.w_e, args.w_i, args.w_ei, args.w_ie, args.w_ee, args.w_ii,
     args.I_e, args.I_i, args.I_i_sigma, args.I_e_sigma,
     args.stdp, seed=seed
 )
-save_result(args.name, result)
-analysis = analyze_result(args.name, args.stim, result, fs=10000, save=True)
+
+# for k, result in enumerate(results):
+#     trial_name = args.name + "_trial-" + str(k)
+#     save_result(trial_name, result)
+#     analysis = analyze_result(trial_name, result, fs=100000, save=True)
