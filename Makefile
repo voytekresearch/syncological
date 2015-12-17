@@ -418,7 +418,7 @@ async_exp1:
 
 # -------------------------------------------------------------------------
 # First set of repeated trials experiments,
-# aaac9240f17fef799ab3dc3f63237a7e60370d93
+# 9f68fc8f739f86fc2e13a5e3c180c2570b8a31ad
 exp14_17: ping_exp14 ping_exp15 ping_exp16 ping_exp17 ing_exp14 ing_exp15 ing_exp16 ing_exp17
 
 
@@ -437,7 +437,7 @@ ping_exp14:
 		0.1 ::: \
 		0.3 ::: \
 		1.2 ::: \
-		{1..20}
+		{1..3}
 
 ping_exp15:
 	-mkdir $(DATADIR)/ping_exp15
@@ -454,7 +454,7 @@ ping_exp15:
 		0.1 ::: \
 		0.3 ::: \
 		1.0 1.5 2.0 ::: \
-		{1..20}
+		{1..3}
 
 ping_exp16:
 	-mkdir $(DATADIR)/ping_exp16
@@ -471,7 +471,7 @@ ping_exp16:
 		0.1 0.3 0.5 ::: \
 		0.3 ::: \
 		1.2 ::: \
-		{1..20}
+		{1..3}
 
 ping_exp17:
 	-mkdir $(DATADIR)/ping_exp17
@@ -488,7 +488,7 @@ ping_exp17:
 		0.1 ::: \
 		0.3 ::: \
 		1.2 ::: \
-		{1..20}
+		{1..3}
 
 ing_exp14:
 	-mkdir $(DATADIR)/ing_exp14
@@ -505,7 +505,7 @@ ing_exp14:
 		0.1 ::: \
 		0.3 ::: \
 		1.2 ::: \
-		{1..20}
+		{1..3}
 
 ing_exp15:
 	-mkdir $(DATADIR)/ing_exp15
@@ -522,7 +522,7 @@ ing_exp15:
 		0.1 ::: \
 		0.3 ::: \
 		1.0 1.5 2.0 ::: \
-		{1..20}
+		{1..3}
 
 ing_exp16:
 	-mkdir $(DATADIR)/ing_exp16
@@ -539,7 +539,7 @@ ing_exp16:
 		0.1 0.3 0.5 ::: \
 		0.3 ::: \
 		1.2 ::: \
-		{1..20}
+		{1..3}
 
 ing_exp17:
 	-mkdir $(DATADIR)/ing_exp17
@@ -556,7 +556,7 @@ ing_exp17:
 		0.1 ::: \
 		0.3 ::: \
 		1.2 ::: \
-		{1..20}
+		{1..3}
 
 # -------------------------------------------------------------------------
 
