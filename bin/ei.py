@@ -141,7 +141,7 @@ ts, idxs = gaussian_impulse(
     time_stim, t_min,
     t_max, stdev, N_stim, k,
     decimals=decimals,
-    prng=np.random.RandomState(args.seed)
+    prng=np.random.RandomState(seed)
 )
 
 # --
