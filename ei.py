@@ -23,9 +23,12 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     np.random.seed(seed)
 
     # Reconile time and period
-    if not np.allclose(time % period, 0):
+    if np.allclose(time, period):
+        N_trials = 1
+    elif np.allclose(time % period, 0):
+        N_trials = int(time / period) 
+    else:
         raise ValueError("time must be an integer multiple of period")
-    N_trials = int(time / period) 
 
     time = time * second
     period = period * second
@@ -49,14 +52,14 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     delay = 2 * ms
     p_ei = 0.1
     p_ie = 0.1
-    p_ee = 0.1
+    p_e = 0.1
     p_ii = 0.6
 
-    w_e = w_e / (p_ee * N_e) * msiemens
+    w_e = w_e / (p_e * N_e) * msiemens
     w_i = w_i * msiemens
     w_ei = w_ei / (p_ei * N_e) * msiemens
     w_ie = w_ie / (p_ie * N_i) * msiemens
-    w_ee = w_ee / (p_ee * N_e) * msiemens
+    w_ee = w_ee / (p_e * N_e) * msiemens
     w_ii = w_ii / (p_ii * N_i) * msiemens
     w_m = 0 / N_e * msiemens  # Read ref 47 to get value
 
@@ -155,10 +158,6 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
 
     # --
     # Syn
-    # External
-    C_stim_e = Synapses(P_stim, P_e, pre='g_s += w_e')
-    C_stim_e.connect(True, p=p_ee)
-
     # Internal
     C_ei = Synapses(P_e, P_i, pre='g_e += w_ei', delay=delay)
     C_ei.connect(True, p=p_ei)
@@ -170,40 +169,71 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     C_ii.connect(True, p=p_ii)
 
     C_ee = Synapses(P_e, P_e, pre='g_ee += w_ee', delay=delay)
-    C_ee.connect(True, p=p_ee)
+    C_ee.connect(True, p=p_e)
+
+    # External
+    C_stim_e = Synapses(P_stim, P_e, pre='g_s += w_e')
+    C_stim_e.connect(True, p=p_e)
+
     if stdp:
+        stdp_syn =  """
+        w_stdp : siemens
+        dApre/dt = -Apre / tau_pre : siemens (event-driven)
+        dApost/dt = -Apost / tau_post : siemens (event-driven)
+        """
         tau_pre = 20 * ms
         tau_post = tau_pre
 
-        gmax = w_ee * 10
-        delta_pre = 0.005
-        delta_post = -delta_pre * tau_pre / tau_post * 1.05
-        delta_pre *= gmax
-        delta_post *= gmax
-
-        C_ee = Synapses(
-            P_e, P_e,
-            """
-            w_stdp : siemens
-            dApre/dt = -Apre / tau_pre : siemens (event-driven)
-            dApost/dt = -Apost / tau_post : siemens (event-driven)
-            """,
+        # SE 
+        gmax_e = w_e * 10
+        dpre_e = 0.005
+        dpost_e = -dpre_e * tau_pre / tau_post * 1.05
+        dpre_e *= w_e
+        dpost_e *= w_e
+        
+        C_stim_e = Synapses(
+            P_stim, P_e, stdp_syn, 
             pre="""
-            g_ee += w_stdp
-            Apre += delta_pre
-            w_stdp = clip(w_stdp + delta_pre, 0, gmax)
+            g_e += w_stdp
+            Apre += dpre_e
+            w_stdp = clip(w_stdp + dpost_e, 0, gmax_e)
             """,
             post="""
-            Apost += delta_post
-            w_stdp = clip(w_stdp + delta_pre, 0, gmax)
+            Apost += dpost_e
+            w_stdp = clip(w_stdp + dpre_e, 0, gmax_e)
             """
         )
-        C_ee.connect(True, p=p_ee)
+        C_stim_e.connect(True, p=p_e) 
+        C_stim_e.w_stdp = 'w_e + (randn() * 0.1 * w_e)'
+        
+        # EE 
+        gmax_ee = w_ee * 10
+        dpre_ee = 0.005
+        dpost_ee = -dpre_ee * tau_pre / tau_post * 1.05
+        dpre_ee *= w_ee
+        dpost_ee *= w_ee
+        
+        C_ee = Synapses(
+            P_e, P_e, stdp_syn, 
+            pre="""
+            g_ee += w_stdp
+            Apre += dpre_ee
+            w_stdp = clip(w_stdp + dpost_ee, 0, gmax_ee)
+            """,
+            post="""
+            Apost += dpost_ee
+            w_stdp = clip(w_stdp + dpre_ee, 0, gmax_ee)
+            """
+        )
+        C_ee.connect(True, p=p_e)
+        C_ee.w_stdp = 'w_ee + (randn() * 0.1 * w_ee)'
 
     # --
     # Create network and save
-    net = Network(P_e, P_i, P_e_back, P_i_back, P_stim, C_ee, C_ii,
-                  C_ie, C_ei, C_stim_e)
+    net = Network(
+        P_e, P_i, P_e_back, P_i_back, P_stim, 
+        C_ee, C_ii, C_ie, C_ei, C_stim_e
+    )
     net.store('trials')
 
     # --
@@ -223,15 +253,16 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
         pop_stim = PopulationRateMonitor(P_stim)
         pop_e = PopulationRateMonitor(P_e)
         pop_i = PopulationRateMonitor(P_i)
-        weights = StateMonitor(C_ee, 'w_stdp', record=True)
+        weights_ee = StateMonitor(C_ee, 'w_stdp', record=True)
+        weights_e = StateMonitor(C_stim_e, 'w_stdp', record=True)
         traces_e = StateMonitor(P_e, ('V', 'g_e', 'g_i', 'g_s', 'g_ee'),
                                 record=True)
         traces_i = StateMonitor(P_i, ('V', 'g_e', 'g_i'),
                                 record=range(11, 31))
+
         monitors = [spikes_i, spikes_e, spikes_stim,
                     pop_stim, pop_e, pop_i, traces_e, traces_i,
-                    weights]
-
+                    weights_e, weights_ee]
         net.add(monitors)
         net.run(period, report='text')
 
@@ -247,7 +278,8 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
             'pop_i': pop_i,
             'traces_e': traces_e,
             'traces_i': traces_i,
-            'weights': weights
+            'weights_e': weights_e,
+            'weights_ee' : weights_ee
         }
  
         trial_name = name + "_trial-" + str(k)
@@ -299,7 +331,7 @@ def save_result(name, result, fs=10000):
                fmt='%.5f, %.1f')
 
     # TODO save weights
-
+    # and neuron indices for weight can become a (i, j) matrix
     # LFP
     lfp = (np.abs(traces_e.g_e.sum(0)) +
            np.abs(traces_e.g_i.sum(0)) +
