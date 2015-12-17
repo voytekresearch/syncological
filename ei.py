@@ -228,6 +228,10 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
         C_ee.connect(True, p=p_e)
         C_ee.w_stdp = 'w_ee + (randn() * 0.1 * w_ee)'
 
+    # Store connectivity data
+    connected_e = (C_stim_e.i_, C_stim_e.j_)
+    connected_ee = (C_ee.i_, C_ee.j_)
+
     # --
     # Create network and save
     net = Network(
@@ -279,7 +283,9 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
             'traces_e': traces_e,
             'traces_i': traces_i,
             'weights_e': weights_e,
-            'weights_ee' : weights_ee
+            'weights_ee' : weights_ee,
+            'connected_e' : connected_e,
+            'connected_ee' : connected_ee
         }
  
         trial_name = name + "_trial-" + str(k)
@@ -301,18 +307,23 @@ def save_result(name, result, fs=10000):
     traces_e = result['traces_e']
     traces_i = result['traces_i']
 
+    weights_e = result['weights_e']
+    weights_ee = result['weights_ee']
+    i_e, j_e = result['connected_e'] 
+    i_ee, j_ee = result['connected_ee'] 
+
     # --
     # Save full
     # Spikes
     np.savetxt(name + '_spiketimes_e.csv',
                np.vstack([spikes_e.i, spikes_e.t, ]).transpose(),
-               fmt='%.i, %.5f')
+               fmt='%i, %.5f')
     np.savetxt(name + '_spiketimes_i.csv',
                np.vstack([spikes_i.i, spikes_i.t, ]).transpose(),
-               fmt='%.i, %.5f')
-    np.savetxt(name + '_spikets_stim.csv',
+               fmt='%i, %.5f')
+    np.savetxt(name + '_spiketimes_stim.csv',
                np.vstack([spikes_stim.i, spikes_stim.t, ]).transpose(),
-               fmt='%.i, %.5f')
+               fmt='%i, %.5f')
 
     # Example trace
     np.savetxt(name + '_exampletrace_e.csv',
@@ -330,8 +341,22 @@ def save_result(name, result, fs=10000):
                np.vstack([pop_i.t, pop_i.rate / Hz, ]).transpose(),
                fmt='%.5f, %.1f')
 
-    # TODO save weights
+    # Save first and last weights
+    np.savetxt(name + '_w_e.csv', 
+            np.vstack([weights_e.w_stdp_[:, 0], 
+                weights_e.w_stdp_[:, weights_e.w_stdp_.shape[1] - 1]]),
+            fmt='%.8f')
+    np.savetxt(name + '_w_ee.csv', 
+            np.vstack([weights_ee.w_stdp_[:, 0], 
+                weights_ee.w_stdp_[:, weights_ee.w_stdp_.shape[1] - 1]]),
+            fmt='%.8f')
+
     # and neuron indices for weight can become a (i, j) matrix
+    np.savetxt(name + '_i_e.csv', i_e, fmt='%i')
+    np.savetxt(name + '_j_e.csv', j_e, fmt='%i')
+    np.savetxt(name + '_i_ee.csv', i_ee, fmt='%i')
+    np.savetxt(name + '_j_ee.csv', j_ee, fmt='%i')
+    
     # LFP
     lfp = (np.abs(traces_e.g_e.sum(0)) +
            np.abs(traces_e.g_i.sum(0)) +
