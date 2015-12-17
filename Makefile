@@ -419,7 +419,7 @@ async_exp1:
 # -------------------------------------------------------------------------
 # First set of repeated trials experiments,
 # 66168388b249b09fbb2c1f32a2e8cec47895895c
-exp14-17: ping_exp14 ping_exp15 ping_exp16 ping_exp17 ing_exp14 ing_exp15 ing_exp16 ing_exp17
+exp14_17: ping_exp14 ping_exp15 ping_exp16 ping_exp17 ing_exp14 ing_exp15 ing_exp16 ing_exp17
 
 
 ping_exp14:
@@ -442,7 +442,7 @@ ping_exp14:
 ping_exp15:
 	-mkdir $(DATADIR)/ping_exp15
 	-rm $(DATADIR)/ping_exp15/*
-	parallel -j 12 -v \
+	parallel -j 5 -v \
 		--joblog '$(DATADIR)/ping_exp15/log' \
 		--nice 19 --delay 2 \
 		'python bin/ei.py $(DATADIR)/ping_exp15/w_ie-{8}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
@@ -459,7 +459,7 @@ ping_exp15:
 ping_exp16:
 	-mkdir $(DATADIR)/ping_exp16
 	-rm $(DATADIR)/ping_exp16/*
-	parallel -j 12 -v \
+	parallel -j 5 -v \
 		--joblog '$(DATADIR)/ping_exp16/log' \
 		--nice 19 --delay 2 \
 		'python bin/ei.py $(DATADIR)/ping_exp16/w_ee-{6}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
@@ -476,7 +476,7 @@ ping_exp16:
 ping_exp17:
 	-mkdir $(DATADIR)/ping_exp17
 	-rm $(DATADIR)/ping_exp17/*
-	parallel -j 12 -v \
+	parallel -j 5 -v \
 		--joblog '$(DATADIR)/ping_exp17/log' \
 		--nice 19 --delay 2 \
 		'python bin/ei.py $(DATADIR)/ping_exp17/rate-{1}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
@@ -510,7 +510,7 @@ ing_exp14:
 ing_exp15:
 	-mkdir $(DATADIR)/ing_exp15
 	-rm $(DATADIR)/ing_exp15/*
-	parallel -j 12 -v \
+	parallel -j 5 -v \
 		--joblog '$(DATADIR)/ing_exp15/log' \
 		--nice 19 --delay 2 \
 		'python bin/ei.py $(DATADIR)/ing_exp15/w_ie-{8}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
@@ -527,7 +527,7 @@ ing_exp15:
 ing_exp16:
 	-mkdir $(DATADIR)/ing_exp16
 	-rm $(DATADIR)/ing_exp16/*
-	parallel -j 12 -v \
+	parallel -j 5 -v \
 		--joblog '$(DATADIR)/ing_exp16/log' \
 		--nice 19 --delay 2 \
 		'python bin/ei.py $(DATADIR)/ing_exp16/w_ee-{6}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
@@ -544,7 +544,7 @@ ing_exp16:
 ing_exp17:
 	-mkdir $(DATADIR)/ing_exp17
 	-rm $(DATADIR)/ing_exp17/*
-	parallel -j 12 -v \
+	parallel -j 5 -v \
 		--joblog '$(DATADIR)/ing_exp17/log' \
 		--nice 19 --delay 2 \
 		'python bin/ei.py $(DATADIR)/ing_exp17/rate-{1}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
