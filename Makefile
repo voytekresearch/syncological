@@ -422,6 +422,7 @@ async_exp1:
 exp14_17: ping_exp14 ping_exp15 ping_exp16 ping_exp17 ing_exp14 ing_exp15 ing_exp16 ing_exp17
 
 
+# I_e
 ping_exp14:
 	-mkdir $(DATADIR)/ping_exp14
 	-rm $(DATADIR)/ping_exp14/*
@@ -439,6 +440,7 @@ ping_exp14:
 		1.2 ::: \
 		{1..3}
 
+# I -> E
 ping_exp15:
 	-mkdir $(DATADIR)/ping_exp15
 	-rm $(DATADIR)/ping_exp15/*
@@ -456,6 +458,7 @@ ping_exp15:
 		1.0 1.5 2.0 ::: \
 		{1..3}
 
+# E -> I
 ping_exp16:
 	-mkdir $(DATADIR)/ping_exp16
 	-rm $(DATADIR)/ping_exp16/*
@@ -473,6 +476,7 @@ ping_exp16:
 		1.2 ::: \
 		{1..3}
 
+# rate
 ping_exp17:
 	-mkdir $(DATADIR)/ping_exp17
 	-rm $(DATADIR)/ping_exp17/*
@@ -559,5 +563,211 @@ ing_exp17:
 		{1..3}
 
 # -------------------------------------------------------------------------
+# Second trials exp, similar to the first but with balances E/I background drive
+# into the main E population (putting it into I would prevent any gamma)
+
+exp18_21: ping_exp18 ping_exp19 ping_exp20 ping_exp21 ing_exp18 ing_exp19 ing_exp20 ing_exp21
 
 
+# I_e
+ping_exp18:
+	-mkdir $(DATADIR)/ping_exp18
+	-rm $(DATADIR)/ping_exp18/*
+	parallel -j 2 -v \
+		--joblog '$(DATADIR)/ping_exp18/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp18/I_e-{2}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		30 ::: \
+		0.0 0.05 0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		2.0 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..3}
+
+# I -> E
+ping_exp19:
+	-mkdir $(DATADIR)/ping_exp19
+	-rm $(DATADIR)/ping_exp19/*
+	parallel -j 2 -v \
+		--joblog '$(DATADIR)/ping_exp19/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp19/w_ie-{8}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		30 ::: \
+		0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		2.0 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.0 1.5 2.0 ::: \
+		{1..3}
+
+# E -> I
+ping_exp20:
+	-mkdir $(DATADIR)/ping_exp20
+	-rm $(DATADIR)/ping_exp20/*
+	parallel -j 2 -v \
+		--joblog '$(DATADIR)/ping_exp20/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp20/w_ee-{6}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		30 ::: \
+		0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		2.0 ::: \
+		0.1 0.3 0.5 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..3}
+
+# rate
+ping_exp21:
+	-mkdir $(DATADIR)/ping_exp21
+	-rm $(DATADIR)/ping_exp21/*
+	parallel -j 2 -v \
+		--joblog '$(DATADIR)/ping_exp21/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ping_exp21/rate-{1}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		10 20 30 ::: \
+		0.1 ::: \
+		0.1 ::: \
+		0.0 ::: \
+		2.0 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..3}
+
+ing_exp18:
+	-mkdir $(DATADIR)/ing_exp18
+	-rm $(DATADIR)/ing_exp18/*
+	parallel -j 2 -v \
+		--joblog '$(DATADIR)/ing_exp18/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp18/I_e-{2}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		30 ::: \
+		0.0 0.05 0.1 ::: \
+		0.8 ::: \
+		0.0 ::: \
+		2.0 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..3}
+
+ing_exp19:
+	-mkdir $(DATADIR)/ing_exp19
+	-rm $(DATADIR)/ing_exp19/*
+	parallel -j 2 -v \
+		--joblog '$(DATADIR)/ing_exp19/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp19/w_ie-{8}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		30 ::: \
+		0.1 ::: \
+		0.8 ::: \
+		0.0 ::: \
+		2.0 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.0 1.5 2.0 ::: \
+		{1..3}
+
+ing_exp20:
+	-mkdir $(DATADIR)/ing_exp20
+	-rm $(DATADIR)/ing_exp20/*
+	parallel -j 2 -v \
+		--joblog '$(DATADIR)/ing_exp20/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp20/w_ee-{6}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		30 ::: \
+		0.1 ::: \
+		0.8 ::: \
+		0.0 ::: \
+		2.0 ::: \
+		0.1 0.3 0.5 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..3}
+
+ing_exp21:
+	-mkdir $(DATADIR)/ing_exp21
+	-rm $(DATADIR)/ing_exp21/*
+	parallel -j 2 -v \
+		--joblog '$(DATADIR)/ing_exp21/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp21/rate-{1}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		10 20 30 ::: \
+		0.1 ::: \
+		0.8 ::: \
+		0.0 ::: \
+		2.0 ::: \
+		0.1 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..3}
+
+# -------------------------------------------------------------------------
+
+# Crasy loss of oscillation in the last experiments.
+# This is a minimal rerun of 18-21 with w_ee (and so STDP)
+# off. 
+# - Focusing on ING so don't have to worry about necessity of EE 
+# in making the gamma
+exp22_24: ing_exp22 ing_exp23 ing_exp24 
+
+
+ing_exp22:
+	-mkdir $(DATADIR)/ing_exp22
+	-rm $(DATADIR)/ing_exp22/*
+	parallel -j 2 -v \
+		--joblog '$(DATADIR)/ing_exp22/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp22/I_e-{2}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		30 ::: \
+		0.0 0.05 0.1 ::: \
+		0.8 ::: \
+		0.0 ::: \
+		2.0 ::: \
+		0.0 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..3}
+
+ing_exp23:
+	-mkdir $(DATADIR)/ing_exp23
+	-rm $(DATADIR)/ing_exp23/*
+	parallel -j 2 -v \
+		--joblog '$(DATADIR)/ing_exp23/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp23/w_ie-{8}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		30 ::: \
+		0.1 ::: \
+		0.8 ::: \
+		0.0 ::: \
+		2.0 ::: \
+		0.0 ::: \
+		0.3 ::: \
+		1.0 1.5 2.0 ::: \
+		{1..3}
+
+ing_exp24:
+	-mkdir $(DATADIR)/ing_exp24
+	-rm $(DATADIR)/ing_exp24/*
+	parallel -j 2 -v \
+		--joblog '$(DATADIR)/ing_exp24/log' \
+		--nice 19 --delay 2 \
+		'python bin/ei.py $(DATADIR)/ing_exp24/rate-{1}_{9}_stdp -t 10 --stim 0.25 --period 0.5 --rate {1} --I_e {2} --I_i {3} --I_i_sigma {4} --I_e_sigma 0.0 --w_e {5} --w_ee {6} --w_ei {7} --w_ie {8} --seed {9} --stdp' ::: \
+		10 20 30 ::: \
+		0.1 ::: \
+		0.8 ::: \
+		0.0 ::: \
+		2.0 ::: \
+		0.0 ::: \
+		0.3 ::: \
+		1.2 ::: \
+		{1..3}
+
+#

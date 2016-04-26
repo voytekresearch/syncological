@@ -116,6 +116,10 @@ parser.add_argument(
     "--stdp",
     action="store_true"
 )
+parser.add_argument(
+    "--balanced",
+    action="store_true"
+)
 args = parser.parse_args()
 
 try:
@@ -150,7 +154,7 @@ result = model(
     args.name, args.time, N_stim, ts, idxs, args.period,
     args.w_e, args.w_i, args.w_ei, args.w_ie, args.w_ee, args.w_ii,
     args.I_e, args.I_i, args.I_i_sigma, args.I_e_sigma,
-    args.stdp, seed=seed
+    args.stdp, balanced=args.balanced, seed=seed 
 )
 
 # for k, result in enumerate(results):
