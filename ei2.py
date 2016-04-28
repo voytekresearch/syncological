@@ -490,9 +490,10 @@ def analyze_result(name, result, fs=100000, save=True):
     lfp = (np.abs(traces_e.g_e.sum(0)) +
            np.abs(traces_e.g_i.sum(0)) +
            np.abs(traces_e.g_ee.sum(0)))
-    fs, spec = util.create_psd(lfp, 1 / result['dt'])
+    fs, spec = futil.create_psd(lfp, 1 / result['dt'])
     m = np.logical_and(fs >= 20, fs <= 80)
-    analysis['gamma_power'] = np.mean(spec[m])
+    analysis['pow_mean'] = np.mean(spec[m])
+    analysis['pow_tot'] = np.sum(spec[m])
     
     if save:
         with open(name + '_analysis.csv', 'w') as f:
