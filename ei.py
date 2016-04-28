@@ -53,6 +53,8 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     p_ii = 0.6
 
     w_e = w_e / (p_e * N_e) * msiemens
+    # TODO add this to external input and make sure it is not bieng used elsewhere
+    # TODO also norm is like w_e is
     w_i = w_i * msiemens
     w_ei = w_ei / (p_ei * N_e) * msiemens
     w_ie = w_ie / (p_ie * N_i) * msiemens
@@ -148,8 +150,11 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     else:
         P_i.I = np.random.normal(I_i, I_i_sigma, N_i) * uamp
 
-    P_stim = SpikeGeneratorGroup(N_stim, idx_stim, ts_stim * second,
-                                 period=period)
+    P_stim = SpikeGeneratorGroup(N_stim, idx_stim, ts_stim * second)
+
+    # Period is broken in RC1
+    # P_stim = SpikeGeneratorGroup(N_stim, idx_stim, ts_stim * second,
+    #                              period=period)
 
     # --
     # Syn
@@ -167,6 +172,7 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     C_ee.connect(True, p=p_e)
 
     # External
+    # TODO subset P_e so I can select subsets to target
     C_stim_e = Synapses(P_stim, P_e, pre='g_s += w_e')
     C_stim_e.connect(True, p=p_e)
 
@@ -268,16 +274,22 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
         pop_stim = PopulationRateMonitor(P_stim)
         pop_e = PopulationRateMonitor(P_e)
         pop_i = PopulationRateMonitor(P_i)
-        weights_ee = StateMonitor(C_ee, 'w_stdp', record=True)
-        weights_e = StateMonitor(C_stim_e, 'w_stdp', record=True)
         traces_e = StateMonitor(P_e, ('V', 'g_e', 'g_i', 'g_s', 'g_ee'),
                                 record=True)
         traces_i = StateMonitor(P_i, ('V', 'g_e', 'g_i'),
-                                record=range(11, 31))
+                                record=True)
 
         monitors = [spikes_i, spikes_e, spikes_stim,
-                    pop_stim, pop_e, pop_i, traces_e, traces_i,
-                    weights_e, weights_ee]
+                    pop_stim, pop_e, pop_i, traces_e, traces_i]
+
+        if stdp:
+            weights_ee = StateMonitor(C_ee, 'w_stdp', record=True)
+            weights_e = StateMonitor(C_stim_e, 'w_stdp', record=True)
+            monitors += [weights_e, weights_ee]
+        else:
+            weights_ee = None
+            weights_e = None
+
         net.add(monitors)
         net.run(period, report='text')
 
@@ -353,14 +365,17 @@ def save_result(name, result, fs=10000):
                fmt='%.5f, %.1f')
 
     # Save first and last weights
-    np.savetxt(name + '_w_e.csv',
-               np.vstack([weights_e.w_stdp_[:, 0],
-                          weights_e.w_stdp_[:, weights_e.w_stdp_.shape[1] - 1]]),
-               fmt='%.8f')
-    np.savetxt(name + '_w_ee.csv',
-               np.vstack([weights_ee.w_stdp_[:, 0],
-                          weights_ee.w_stdp_[:, weights_ee.w_stdp_.shape[1] - 1]]),
-               fmt='%.8f')
+    if weights_e is not None:
+        np.savetxt(name + '_w_e.csv',
+                   np.vstack([weights_e.w_stdp_[:, 0],
+                              weights_e.w_stdp_[:, weights_e.w_stdp_.shape[1] - 1]]),
+                   fmt='%.8f')
+        
+    if weights_ee is not None:
+        np.savetxt(name + '_w_ee.csv',
+                   np.vstack([weights_ee.w_stdp_[:, 0],
+                              weights_ee.w_stdp_[:, weights_ee.w_stdp_.shape[1] - 1]]),
+                   fmt='%.8f')
 
     # and neuron indices for weight can become a (i, j) matrix
     np.savetxt(name + '_i_e.csv', i_e, fmt='%i')
@@ -434,3 +449,4 @@ def analyze_result(name, result, fs=100000, save=True):
 
     # TODO SFC
     return analysis
+
