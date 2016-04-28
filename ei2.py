@@ -493,7 +493,7 @@ def analyze_result(name, result, fs=100000, save=True):
     fs, spec = futil.create_psd(lfp, 1 / result['dt'])
     m = np.logical_and(fs >= 20, fs <= 80)
     analysis['pow_mean'] = np.mean(spec[m])
-    analysis['pow_tot'] = np.sum(spec[m])
+    analysis['pow_std'] = np.std(spec[m])
     
     if save:
         with open(name + '_analysis.csv', 'w') as f:
