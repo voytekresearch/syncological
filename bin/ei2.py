@@ -58,7 +58,7 @@ if __name__ == "__main__":
     # -- Random
     codes = range(k)
     w_es = prng.uniform(2, 10, k)
-    w_ies = prng.uniform(0.5, 3.0, k)
+    w_ies = prng.uniform(0.1, 3.0, k)
     I_es = prng.uniform(0.1, 0.8, k)
     params = zip(codes, w_es, w_ies, I_es)
     

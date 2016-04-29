@@ -429,8 +429,11 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     analysis = {}
 
     # -- Unpack data
+    time = result['time']
+
     spikes_e = result['spikes_e']
     spikes_stim = result['spikes_stim']
+
     spikes_i = result['spikes_i']
     traces_e = result['traces_e']
     traces_e = result['traces_e']
@@ -466,6 +469,11 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     ns_stim, ts_stim = ns_stim[mask], ts_stim[mask]
 
     # -- Analyze
+    # Mean rate
+    analysis['rate_stim'] = ts_stim.size / time
+    analysis['rate_e'] = ts_e.size / time
+    analysis['rate_i'] = ts_i.size / time
+
     # kappa
     r_e = futil.kappa(ns_e, ts_e, ns_e, ts_e, (0, 1), 1.0 / 1000)  # 1 ms bins
     analysis['kappa_e'] = r_e
