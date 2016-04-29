@@ -4,7 +4,6 @@
 Implements a sparse PING E-I model, based Borges et al PNAS 2005.
 """
 from __future__ import division
-import argparse
 import numpy as np
 from brian2 import *
 from syncological.inputs import gaussian_impulse
