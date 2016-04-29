@@ -134,7 +134,7 @@ def model(name, time,
     else:
         P_i.I = np.random.normal(I_i, I_i_sigma, N_i) * uamp
     P_stim = SpikeGeneratorGroup(N_stim, ns_stim, ts_stim * second)
-
+    
     # --
     # Syn
     # Internal
@@ -260,15 +260,15 @@ def model(name, time,
 
     net.add(monitors)
 
-    if verbose:
-        print(">>> Running")
+    # -- 
+    if verbose: print(">>> Running")
     report = None
-    if verbose:
-        report = 'text'
+    if verbose: report = 'text'
+
     net.run(time, report=report)
 
-    if verbose:
-        print(">>> Analyzing and saving")
+    # --
+    if verbose: print(">>> Analyzing and saving")
     result = {
         'N_stim': N_stim,
         'time': time / second,
@@ -290,7 +290,35 @@ def model(name, time,
     save_result(name, result)
     analyze_result(name, result, fs=1 / result['dt'], save=True)
 
-    # If we're running in parallel don't return anything
+    # -- Save params
+    params = {
+        'N_e' : N_e,
+        'N_i' : N_i,
+        'I_e' : float(I_e),
+        'I_i' : float(I_i),
+        'delay' : float(delay),
+        'p_ei' : float(p_ei),
+        'p_ie' : float(p_ie),
+        'p_e' : float(p_e),
+        'p_ii' : float(p_ii),
+        'w_e' : float(w_e),
+        'w_i' : float(w_i),
+        'w_ei' : float(w_ei),
+        'w_ie' : float(w_ie),
+        'w_ee' : float(w_ee),
+        'w_ii' : float(w_ii),
+        'w_m' : float(w_m),
+        'p_back' : float(p_back),
+        'w_e_back' : float(w_e_back),
+        'w_i_back' : float(w_i_back),
+        'time' : float(time),
+        'dt' : float(time_step)
+    }
+    with open(name + '_params.csv', 'w') as f:
+        [f.write('{0},{1:.5e}\n'.format(k, v))
+         for k, v in params.items()]
+
+    # -- If we're running in parallel don't return anything
     # to save memory.
     if parallel:
         result = None
