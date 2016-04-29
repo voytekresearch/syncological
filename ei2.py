@@ -14,11 +14,11 @@ from fakespikes import util as futil
 import pyspike as spk
 
 
-def model(name, time, 
-        N_stim, ts_stim, ns_stim,
-        w_e, w_i, w_ei, w_ie, w_ee, w_ii, I_e, I_i, 
-        I_i_sigma=0, I_e_sigma=0, N=400, stdp=False, balanced=True, 
-        seed=None, verbose=True, parallel=False):
+def model(name, time,
+          N_stim, ts_stim, ns_stim,
+          w_e, w_i, w_ei, w_ie, w_ee, w_ii, I_e, I_i,
+          I_i_sigma=0, I_e_sigma=0, N=400, stdp=False, balanced=True,
+          seed=None, verbose=True, parallel=False):
     """Model IIIIIEEEEEEE!"""
 
     np.random.seed(seed)
@@ -32,21 +32,21 @@ def model(name, time,
     # Network
     N_e = int(N * 0.8)
     N_i = int(N * 0.2)
-    
+
     delay = 2 * ms
     p_ei = 0.1
     p_ie = 0.1
     p_e = 0.1
     p_ii = 0.6
-    
+
     w_e = w_e / (p_e * N_e) * msiemens
     w_i = w_i / (p_e * N_i) * msiemens
-    
+
     w_ei = w_ei / (p_ei * N_e) * msiemens
     w_ie = w_ie / (p_ie * N_i) * msiemens
     w_ee = w_ee / (p_e * N_e) * msiemens
     w_ii = w_ii / (p_ii * N_i) * msiemens
-    
+
     w_m = 0 / N_e * msiemens  # Read ref 47 to get value
 
     # --
@@ -57,7 +57,7 @@ def model(name, time,
     g_Na = 100 * msiemens
     g_K = 80 * msiemens
     g_l = 0.1 * msiemens
-    
+
     V_Na = 50 * mV
     V_K = -100 * mV
     V_l = -67 * mV
@@ -155,7 +155,7 @@ def model(name, time,
     C_stim_e.connect(True, p=p_e)
     C_stim_i = Synapses(P_stim, P_i[:int(N_stim / 4)], on_pre='g_i += w_i')
     C_stim_i.connect(True, p=p_e)
-    
+
     if balanced:
         P_e_back = PoissonGroup(8000, rates=10 * Hz)
         P_i_back = PoissonGroup(2000, rates=10 * Hz)
@@ -260,17 +260,19 @@ def model(name, time,
 
     net.add(monitors)
 
-    if verbose: print(">>> Running")
+    if verbose:
+        print(">>> Running")
     report = None
     if verbose:
         report = 'text'
     net.run(time, report=report)
 
-    if verbose: print(">>> Analyzing and saving")
+    if verbose:
+        print(">>> Analyzing and saving")
     result = {
-        'N_stim' : N_stim,
-        'time' : time / second,
-        'dt' : time_step / second,
+        'N_stim': N_stim,
+        'time': time / second,
+        'dt': time_step / second,
         'spikes_i': spikes_i,
         'spikes_e': spikes_e,
         'spikes_stim': spikes_stim,
@@ -292,7 +294,7 @@ def model(name, time,
     # to save memory.
     if parallel:
         result = None
-    
+
     return result
 
 
@@ -308,7 +310,7 @@ def save_result(name, result, fs=10000):
     traces_i = result['traces_i']
     weights_e = result['weights_e']
     weights_ee = result['weights_ee']
-    
+
     i_e, j_e = result['connected_e']
     i_ee, j_ee = result['connected_ee']
 
@@ -322,7 +324,7 @@ def save_result(name, result, fs=10000):
 
     v_e = traces_e.V_[:]
     v_i = traces_i.V_[:]
-    
+
     # --
     # Save full
     # Spikes
@@ -358,7 +360,7 @@ def save_result(name, result, fs=10000):
                    np.vstack([weights_e.w_stdp_[:, 0],
                               weights_e.w_stdp_[:, weights_e.w_stdp_.shape[1] - 1]]),
                    fmt='%.8f')
-        
+
     if weights_ee is not None:
         np.savetxt(name + '_w_ee.csv',
                    np.vstack([weights_ee.w_stdp_[:, 0],
@@ -385,16 +387,16 @@ def save_result(name, result, fs=10000):
 
     # STA
     sta_e, bins_sta_e = futil.spike_triggered_average(
-        ts_e, ns_e, v_e, (0, time), 10e-3, 1/1e-5)
+        ts_e, ns_e, v_e, (0, time), 10e-3, 1 / 1e-5)
     np.savetxt(name + '_sta_e.csv', np.vstack(
         [sta_e, bins_sta_e]).transpose(), fmt='%.5f, %.5f')
-        
+
     sta_i, bins_sta_i = futil.spike_triggered_average(
-        ts_i, ns_i, v_i, (0, time), 10e-3, 1/1e-5)
+        ts_i, ns_i, v_i, (0, time), 10e-3, 1 / 1e-5)
     np.savetxt(name + '_sta_i.csv', np.vstack(
         [sta_i, bins_sta_i]).transpose(), fmt='%.5f, %.5f')
 
-        
+
 def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     analysis = {}
 
@@ -405,7 +407,7 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     traces_e = result['traces_e']
     traces_e = result['traces_e']
     traces_i = result['traces_i']
-    
+
     ts_e = spikes_e.t_[:]
     ts_stim = spikes_stim.t_[:]
     ns_e = spikes_e.i_[:]
@@ -451,14 +453,15 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     sto_e = spk.SpikeTrain(ts_e, (ts_e.min(), ts_e.max()))
     sto_stim = spk.SpikeTrain(ts_stim, (ts_stim.min(), ts_stim.max()))
     sto_e.sort()
-    sto_stim.sort() 
+    sto_stim.sort()
     analysis['s_isi_e'] = spk.isi_distance(sto_stim, sto_e)
     analysis['s_sync_e'] = spk.spike_sync(sto_stim, sto_e)
 
     # lev and KL distance
     ordered_e, _ = futil.ts_sort(ns_e, ts_e)
     ordered_stim, _ = futil.ts_sort(ns_stim, ts_stim)
-    analysis['lev_spike_e'] = futil.levenshtein(list(ordered_stim), list(ordered_e))
+    analysis['lev_spike_e'] = futil.levenshtein(
+        list(ordered_stim), list(ordered_e))
     analysis['kl_spike_e'] = futil.kl_divergence(ordered_stim, ordered_e)
 
     ra_e, _, _ = futil.rate_code(ts_e, (0, 1), 20e-3)
@@ -470,13 +473,13 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     ra_stim, _, _ = futil.rate_code(ts_stim, (0, 1), 50e-3)
     analysis['lev_course_rate_e'] = futil.levenshtein(ra_stim, ra_e)
     analysis['kl_course_rate_e'] = futil.kl_divergence(ra_stim, ra_e)
-    
-    tol = 1e-2  # 10 ms 
-    cc_e, _, _= futil.coincidence_code(ts_e, ns_e, tol)
+
+    tol = 1e-2  # 10 ms
+    cc_e, _, _ = futil.coincidence_code(ts_e, ns_e, tol)
     cc_stim, _, _ = futil.coincidence_code(ts_stim, ns_stim, tol)
     analysis['lev_cc_e'] = futil.levenshtein(cc_stim, cc_e)
     analysis['kl_cc_e'] = futil.kl_divergence(cc_stim, cc_e)
-    
+
     # Gamma power
     lfp = (np.abs(traces_e.g_e.sum(0)) +
            np.abs(traces_e.g_i.sum(0)) +
@@ -485,10 +488,10 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     m = np.logical_and(fs >= 20, fs <= 80)
     analysis['pow_mean'] = np.mean(spec[m])
     analysis['pow_std'] = np.std(spec[m])
-    
+
     if save:
         with open(name + '_analysis.csv', 'w') as f:
-            [f.write('{0},{1:.3e}\n'.format(k, v)) for k, v in analysis.items()]
+            [f.write('{0},{1:.3e}\n'.format(k, v))
+             for k, v in analysis.items()]
 
     return analysis
-
