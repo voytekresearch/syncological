@@ -18,7 +18,7 @@ def model(name, time,
         N_stim, ts_stim, ns_stim,
         w_e, w_i, w_ei, w_ie, w_ee, w_ii, I_e, I_i, 
         I_i_sigma=0, I_e_sigma=0, N=400, stdp=False, balanced=True, 
-        seed=None, verbose=True, paralllel=False):
+        seed=None, verbose=True, parallel=False):
     """Model IIIIIEEEEEEE!"""
 
     np.random.seed(seed)
@@ -109,14 +109,16 @@ def model(name, time,
     P_e = NeuronGroup(
         N_e, model=hh,
         threshold='V >= V_thresh',
-        refractory=3 * ms
+        refractory=3 * ms,
+        method='rk2'
     )
 
     P_i = NeuronGroup(
         N_i,
         model=hh,
         threshold='V >= V_thresh',
-        refractory=3 * ms
+        refractory=3 * ms,
+        method='rk2'
     )
 
     P_e.V = V_l
@@ -266,13 +268,13 @@ def model(name, time,
 
     net.add(monitors)
 
-    print(">>> Running")
+    if verbose: print(">>> Running")
     report = None
     if verbose:
         report = 'text'
     net.run(time, report=report)
 
-    print(">>> Analyzing and saving")
+    if verbose: print(">>> Analyzing and saving")
     result = {
         'N_stim' : N_stim,
         'time' : time / second,
@@ -292,38 +294,19 @@ def model(name, time,
     }
 
     save_result(name, result)
-    analyze_result(name, result, fs=100000, save=True)
+    analyze_result(name, result, fs=1 / result['dt'], save=True)
 
     # If we're running in parallel don't return anything
     # to save memory.
-    if paralllel:
+    if parallel:
         result = None
     
     return result
 
 
-def create_params_generator(K, range_ie, range_e, range_I_e, prng):
-    """Create a parameter generator function."""
-    if prng is None:
-        prng = np.random.RandomState()
-    
-    w_ie1, w_ie2 = range_ie
-    w_e1, w_e2 = range_e
-    I_e1, I_e2 = range_I_e 
-           
-    def params():
-        """Returns (uniform) random parameters (k, w_ei, w_e, I_e)"""
-        for k in range(K):
-            x1 = prng.uniform(w_ie1, w_ie1)
-            x2 = prng.uniform(w_e1, w_e2)
-            x3 = prng.uniform(I_e1, I_e2)
-        
-            yield k, x1, x2, x3
-    
-    return params
-
-
 def save_result(name, result, fs=10000):
+    time = result['time']
+
     spikes_e = result['spikes_e']
     spikes_i = result['spikes_i']
     spikes_stim = result['spikes_i']
@@ -410,19 +393,20 @@ def save_result(name, result, fs=10000):
 
     # STA
     sta_e, bins_sta_e = futil.spike_triggered_average(
-        ts_e, ns_e, v_e, (0, 1), 10e-3, 1/1e-5)
+        ts_e, ns_e, v_e, (0, time), 10e-3, 1/1e-5)
     np.savetxt(name + '_sta_e.csv', np.vstack(
         [sta_e, bins_sta_e]).transpose(), fmt='%.5f, %.5f')
         
     sta_i, bins_sta_i = futil.spike_triggered_average(
-        ts_i, ns_i, v_i, (0, 1), 10e-3, 1/1e-5)
+        ts_i, ns_i, v_i, (0, time), 10e-3, 1/1e-5)
     np.savetxt(name + '_sta_i.csv', np.vstack(
         [sta_i, bins_sta_i]).transpose(), fmt='%.5f, %.5f')
 
         
-def analyze_result(name, result, fs=100000, save=True):
+def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     analysis = {}
 
+    # -- Unpack data
     spikes_e = result['spikes_e']
     spikes_stim = result['spikes_stim']
     spikes_i = result['spikes_i']
@@ -441,6 +425,7 @@ def analyze_result(name, result, fs=100000, save=True):
     v_e = traces_e.V_[:]
     v_i = traces_i.V_[:]
 
+    # -- Select data
     # Analyze only N_stim
     N_stim = result['N_stim']
     mask = ns_e <= N_stim
@@ -448,6 +433,17 @@ def analyze_result(name, result, fs=100000, save=True):
     mask = ns_i <= int(N_stim / 4)
     ns_i, ts_i = ns_i[mask], ts_i[mask]
 
+    # Drop before drop_before
+    mask = ts_e >= drop_before
+    ns_e, ts_e = ns_e[mask], ts_e[mask]
+
+    mask = ts_i >= drop_before
+    ns_i, ts_i = ns_i[mask], ts_i[mask]
+
+    mask = ts_stim >= drop_before
+    ns_stim, ts_stim = ns_stim[mask], ts_stim[mask]
+
+    # -- Analyze
     # kappa
     r_e = futil.kappa(ns_e, ts_e, ns_e, ts_e, (0, 1), 1.0 / 1000)  # 1 ms bins
     analysis['kappa_e'] = r_e
@@ -467,24 +463,27 @@ def analyze_result(name, result, fs=100000, save=True):
     analysis['s_isi_e'] = spk.isi_distance(sto_stim, sto_e)
     analysis['s_sync_e'] = spk.spike_sync(sto_stim, sto_e)
 
-    # l distance and spike
-    # TODO also do KL for each code
+    # lev and KL distance
     ordered_e, _ = futil.ts_sort(ns_e, ts_e)
     ordered_stim, _ = futil.ts_sort(ns_stim, ts_stim)
     analysis['lev_spike_e'] = futil.levenshtein(list(ordered_stim), list(ordered_e))
+    analysis['kl_spike_e'] = futil.kl_divergence(ordered_stim, ordered_e)
 
     ra_e, _, _ = futil.rate_code(ts_e, (0, 1), 20e-3)
     ra_stim, _, _ = futil.rate_code(ts_stim, (0, 1), 20e-3)
     analysis['lev_fine_rate_e'] = futil.levenshtein(ra_stim, ra_e)
-    
+    analysis['kl_fine_rate_e'] = futil.kl_divergence(ra_stim, ra_e)
+
     ra_e, _, _ = futil.rate_code(ts_e, (0, 1), 50e-3)
     ra_stim, _, _ = futil.rate_code(ts_stim, (0, 1), 50e-3)
     analysis['lev_course_rate_e'] = futil.levenshtein(ra_stim, ra_e)
+    analysis['kl_course_rate_e'] = futil.kl_divergence(ra_stim, ra_e)
     
     tol = 1e-2  # 10 ms 
     cc_e, _, _= futil.coincidence_code(ts_e, ns_e, tol)
     cc_stim, _, _ = futil.coincidence_code(ts_stim, ns_stim, tol)
     analysis['lev_cc_e'] = futil.levenshtein(cc_stim, cc_e)
+    analysis['kl_cc_e'] = futil.kl_divergence(cc_stim, cc_e)
     
     # Gamma power
     lfp = (np.abs(traces_e.g_e.sum(0)) +
@@ -497,7 +496,7 @@ def analyze_result(name, result, fs=100000, save=True):
     
     if save:
         with open(name + '_analysis.csv', 'w') as f:
-            [f.write('{0},{1}\n'.format(k, v)) for k, v in analysis.items()]
+            [f.write('{0},{1:.3e}\n'.format(k, v)) for k, v in analysis.items()]
 
     return analysis
 
