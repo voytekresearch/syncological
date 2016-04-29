@@ -38,7 +38,7 @@ def model(name, time,
     p_ie = 0.1
     p_e = 0.1
     p_ii = 0.6
-
+    
     w_e = w_e / (p_e * N_e) * msiemens
     w_i = w_i / (p_e * N_i) * msiemens
     
@@ -123,14 +123,6 @@ def model(name, time,
 
     P_e.V = V_l
     P_i.V = V_l
-    
-    # P_e.V = 'randn() * 0.1 * V_l'
-    # P_i.V = 'randn() * 0.1 * V_l'
-    #
-    # P_e.g_e = 'randn() * 0.1 * w_e'
-    # P_e.g_ee = 'randn() * 0.1 * w_ee'
-    # P_e.g_i = 'randn() * 0.1 * w_ie'
-    # P_i.g_i = 'randn() * 0.1 * w_ii'
 
     if np.allclose(I_e_sigma, 0.0):
         P_e.I = I_e * uamp
