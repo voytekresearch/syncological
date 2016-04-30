@@ -51,6 +51,7 @@ if __name__ == "__main__":
     w_ii = 0.5
     w_ei = 1.0
 
+    I_e = 0.1
     I_i = 0.1
     if args['--ing']:
         I_i = 0.8
@@ -59,11 +60,10 @@ if __name__ == "__main__":
     codes = range(k)
     w_es = prng.uniform(2, 10, k)
     w_ies = prng.uniform(0.1, 3.0, k)
-    I_es = prng.uniform(0.1, 0.8, k)
-    params = zip(codes, w_es, w_ies, I_es)
+    params = zip(codes, w_es, w_ies)
     
     np.savez(os.path.join(save_path, "params"),
-            codes=codes, w_es=w_es, w_ies=w_ies, I_es=I_es,
+            codes=codes, w_es=w_es, w_ies=w_ies, I_e=I_e,
             w_i=w_i, w_ee=w_ee, w_ii=w_ii, w_ei=w_ei, I_i=I_i)
 
     # ------------------------------------------------------------
@@ -118,5 +118,5 @@ if __name__ == "__main__":
             I_e=I_e, I_i=I_i,
             verbose=False, parallel=True, 
             seed=stim_seed) 
-        for code, w_e, w_ie, I_e in params
+        for code, w_e, w_ie in params
     )
