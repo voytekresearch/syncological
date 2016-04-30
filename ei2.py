@@ -8,6 +8,7 @@ import numpy as np
 from brian2 import *
 from syncological.inputs import gaussian_impulse
 from scipy.stats.mstats import zscore
+from scipy.spatial.distance import cosine as cosined
 from foof.util import create_psd
 from fakespikes import util as futil
 import pyspike as spk
@@ -523,6 +524,13 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     m = np.logical_and(fs >= 20, fs <= 80)
     analysis['pow_mean'] = np.mean(spec[m])
     analysis['pow_std'] = np.std(spec[m])
+
+    # STA distance
+    sta_e, _ = futil.spike_triggered_average(
+        ts_e, ns_e, v_e, (0, time), 10e-3, 1 / 1e-5)
+    sta_i, _ = futil.spike_triggered_average(
+        ts_i, ns_i, v_i, (0, time), 10e-3, 1 / 1e-5)
+    analysis['sta_distance'] = cosined(sta_e, sta_i)
 
     if save:
         with open(name + '_analysis.csv', 'w') as f:
