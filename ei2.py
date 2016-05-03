@@ -308,9 +308,6 @@ def model(name, time,
         'w_ee' : float(w_ee),
         'w_ii' : float(w_ii),
         'w_m' : float(w_m),
-        'p_back' : float(p_back),
-        'w_e_back' : float(w_e_back),
-        'w_i_back' : float(w_i_back),
         'time' : float(time),
         'dt' : float(time_step)
     }

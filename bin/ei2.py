@@ -1,8 +1,9 @@
 """Usage: ei2.py PATH K 
     (--ing | --ping)
+    [--no_balanced]
     [--stim_seed=STIM_SEED]
     [--n_stim=NSTIM]
-    [--n_jobs=NJOBS]
+    [--n_job=NJOB]
 
 Simulate a EI circuit with HH neurons.
 
@@ -14,9 +15,10 @@ Simulate a EI circuit with HH neurons.
         -h --help                   show this screen
         --ing                       run in ING mode
         --ping                      run in PING mode
+        --no_balanced               turn off balanced background activity     
         --stim_seed=STIM_SEED       seed for creating the stimulus [default: 42]
         --n_stim=NSTIM              number of driving neurons [default: 100]
-        --n_jobs=NJOBS              number of parallel jobs [default: 10]
+        --n_job=NJOB                number of parallel jobs [default: 10]
 
 """
 from __future__ import division
@@ -41,6 +43,10 @@ if __name__ == "__main__":
     n_stim = int(args['--n_stim'])
  
     prng = np.random.RandomState(stim_seed)
+
+    balanced = True
+    if args["--no_balanced"]:
+        balanced = False
 
     # ------------------------------------------------------------
     # Params
@@ -110,7 +116,7 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------
     # Run
-    Parallel(n_jobs=int(args['--n_jobs']), verbose=3)(
+    Parallel(n_jobs=int(args['--n_job']), verbose=3)(
         delayed(ei2.model)(
             os.path.join(save_path, str(code)), 
             time, n_stim, ts, ns, 

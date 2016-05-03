@@ -774,13 +774,25 @@ ing_exp24:
 # START ei2 EXPERIMENTS
 #
 
-# 5cc84ee7c9acf29240ca9120b296694c4e192805
+# 09597fe5d4e9ea6b4d244ff1873236dea1cef871
 exp200:
 	-mkdir $(DATADIR)/exp200
 	-rm $(DATADIR)/exp200/*
-	nice -n 19 python bin/ei2.py --ping $(DATADIR)/exp200 1000
+	nice -n 19 python bin/ei2.py --ping $(DATADIR)/exp200 2000
 
 exp201:
 	-mkdir $(DATADIR)/exp201
 	-rm $(DATADIR)/exp201/
-	nice -n 19 python bin/ei2.py --ing $(DATADIR)/exp201 1000
+	nice -n 19 python bin/ei2.py --ing $(DATADIR)/exp201 2000
+
+
+exp202:
+	-mkdir $(DATADIR)/exp202
+	-rm $(DATADIR)/exp202/*
+	nice -n 19 python bin/ei2.py --ping --no_balanced --n_job=6 $(DATADIR)/exp202 1000
+
+exp203:
+	-mkdir $(DATADIR)/exp203
+	-rm $(DATADIR)/exp203/*
+	nice -n 19 python bin/ei2.py --ping --no_balanced --n_job=6 $(DATADIR)/exp203 1000
+
