@@ -225,7 +225,11 @@ def model(name, time,
 
     # Store connectivity data
     connected_e = (C_stim_e.i_, C_stim_e.j_)
+    connected_i = (C_stim_i.i_, C_stim_i.j_)
     connected_ee = (C_ee.i_, C_ee.j_)
+    connected_ie = (C_ie.i_, C_ie.j_)
+    connected_ei = (C_ei.i_, C_ei.j_)
+    connected_ii = (C_ii.i_, C_ii.j_)
 
     # --
     # Create network and save
@@ -284,6 +288,10 @@ def model(name, time,
         'weights_e': weights_e,
         'weights_ee': weights_ee,
         'connected_e': connected_e,
+        'connected_i': connected_i,
+        'connected_ie': connected_ie,
+        'connected_ei': connected_ei,
+        'connected_ii': connected_ii,
         'connected_ee': connected_ee
     }
 
@@ -337,7 +345,11 @@ def save_result(name, result, fs=10000):
     weights_ee = result['weights_ee']
 
     i_e, j_e = result['connected_e']
+    i_i, j_i = result['connected_i']
     i_ee, j_ee = result['connected_ee']
+    i_ei, j_ei = result['connected_ei']
+    i_ie, j_ie = result['connected_ie']
+    i_ii, j_ii = result['connected_ii']
 
     ts_e = spikes_e.t_[:]
     ts_stim = spikes_stim.t_[:]
@@ -395,9 +407,17 @@ def save_result(name, result, fs=10000):
     # and neuron indices for weight can become a (i, j) matrix
     np.savetxt(name + '_i_e.csv', i_e, fmt='%i')
     np.savetxt(name + '_j_e.csv', j_e, fmt='%i')
+    np.savetxt(name + '_i_i.csv', i_i, fmt='%i')
+    np.savetxt(name + '_j_i.csv', j_i, fmt='%i')
     np.savetxt(name + '_i_ee.csv', i_ee, fmt='%i')
     np.savetxt(name + '_j_ee.csv', j_ee, fmt='%i')
-
+    np.savetxt(name + '_i_ei.csv', i_ei, fmt='%i')
+    np.savetxt(name + '_j_ei.csv', j_ei, fmt='%i')
+    np.savetxt(name + '_i_ie.csv', i_ie, fmt='%i')
+    np.savetxt(name + '_j_ie.csv', j_ie, fmt='%i')
+    np.savetxt(name + '_i_ii.csv', i_ii, fmt='%i')
+    np.savetxt(name + '_j_ii.csv', j_ii, fmt='%i')
+    
     # LFP
     lfp = (np.abs(traces_e.g_e.sum(0)) +
            np.abs(traces_e.g_i.sum(0)) +
@@ -495,23 +515,28 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     ordered_stim, _ = futil.ts_sort(ns_stim, ts_stim)
     analysis['lev_spike_e'] = futil.levenshtein(
         list(ordered_stim), list(ordered_e))
+    analysis['lev_spike_e_n'] = futil.levenshtein(
+        list(ordered_stim), list(ordered_e)) / len(ordered_stim)
+
     analysis['kl_spike_e'] = futil.kl_divergence(ordered_stim, ordered_e)
 
     ra_e, _, _ = futil.rate_code(ts_e, (0, 1), 20e-3)
     ra_stim, _, _ = futil.rate_code(ts_stim, (0, 1), 20e-3)
     analysis['lev_fine_rate_e'] = futil.levenshtein(ra_stim, ra_e)
+    analysis['lev_fine_rate_e_n'] = futil.levenshtein(ra_stim, ra_e) / len(ra_stim)
     analysis['kl_fine_rate_e'] = futil.kl_divergence(ra_stim, ra_e)
 
     ra_e, _, _ = futil.rate_code(ts_e, (0, 1), 50e-3)
     ra_stim, _, _ = futil.rate_code(ts_stim, (0, 1), 50e-3)
     analysis['lev_course_rate_e'] = futil.levenshtein(ra_stim, ra_e)
+    analysis['lev_course_rate_e_n'] = futil.levenshtein(ra_stim, ra_e) / len(ra_stim)
     analysis['kl_course_rate_e'] = futil.kl_divergence(ra_stim, ra_e)
 
-    tol = 1e-2  # 10 ms
-    cc_e, _, _ = futil.coincidence_code(ts_e, ns_e, tol)
-    cc_stim, _, _ = futil.coincidence_code(ts_stim, ns_stim, tol)
-    analysis['lev_cc_e'] = futil.levenshtein(cc_stim, cc_e)
-    analysis['kl_cc_e'] = futil.kl_divergence(cc_stim, cc_e)
+    # tol = 1e-2  # 10 ms
+    # cc_e, _, _ = futil.coincidence_code(ts_e, ns_e, tol)
+    # cc_stim, _, _ = futil.coincidence_code(ts_stim, ns_stim, tol)
+    # analysis['lev_cc_e'] = futil.levenshtein(cc_stim, cc_e)
+    # analysis['kl_cc_e'] = futil.kl_divergence(cc_stim, cc_e)
 
     # Gamma power
     lfp = (np.abs(traces_e.g_e.sum(0)) +
@@ -528,6 +553,7 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     sta_i, _ = futil.spike_triggered_average(
         ts_i, ns_i, v_i, (0, time), 10e-3, 1 / 1e-5)
     analysis['sta_distance'] = cosined(sta_e, sta_i)
+    analysis['rmse'] = np.sqrt(np.mean((sta_e - sta_i) ** 2))
 
     if save:
         with open(name + '_analysis.csv', 'w') as f:
