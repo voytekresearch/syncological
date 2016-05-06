@@ -1,6 +1,37 @@
 import numpy as np
 
 
+def create_ij(p, Ni, Nj, prng=None):
+    """Create connection index between Ni and Nj, with probability p.
+
+    Params
+    ------
+    p : numeric
+        Connection probability
+    Ni : numeric
+        Number of Ni neurons
+    Nj : numeric
+        Number of Nj neurons
+    seed : int
+        Seed (int) for binomial distribution sampling
+    """
+    if prng is None:
+        prng = np.random.RandomState()
+    
+    Ni = int(Ni)
+    Nj = int(Nj)
+
+    conn_i = []
+    conn_j = []
+    for i in range(Ni):
+        for j in range(Nj):
+            if prng.binomial(1, p):
+                conn_i.append(i)
+                conn_j.append(j)
+
+    return conn_i, conn_j
+
+    
 def thal_spikes(t, f, N, k, prng=None):
     """Create synchronous bursts (1 ms variance) of thalamic-ish spike
 
