@@ -2,6 +2,7 @@
     (--ing | --ping)
     [--no_balanced]
     [--stim_seed=STIM_SEED]
+    [--conn_seed=CONN_SEED]
     [--n_stim=NSTIM]
     [--n_job=NJOB]
 
@@ -17,6 +18,7 @@ Simulate a EI circuit with HH neurons.
         --ping                      run in PING mode
         --no_balanced               turn off balanced background activity     
         --stim_seed=STIM_SEED       seed for creating the stimulus [default: 42]
+        --conn_seed=CONN_SEED       seed for creating connections 
         --n_stim=NSTIM              number of driving neurons [default: 100]
         --n_job=NJOB                number of parallel jobs [default: 10]
 
@@ -72,6 +74,11 @@ if __name__ == "__main__":
             codes=codes, w_es=w_es, w_ies=w_ies, I_e=I_e,
             w_i=w_i, w_ee=w_ee, w_ii=w_ii, w_ei=w_ei, I_i=I_i)
 
+    # -- Fix connections?
+    conn_seed = None
+    if args['--conn_seed']:
+        conn_seed = int(args['--conn_seed'])
+
     # ------------------------------------------------------------
     # Create input
     # Load v1 rate data (1 ms resoultion)
@@ -123,6 +130,6 @@ if __name__ == "__main__":
             w_e, w_i, w_ei, w_ie, w_ee, w_ii,
             I_e=I_e, I_i=I_i,
             verbose=False, parallel=True, 
-            seed=stim_seed) 
+            seed=stim_seed, conn_seed=conn_seed) 
         for code, w_e, w_ie in params
     )
