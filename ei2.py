@@ -18,7 +18,8 @@ def model(name, time,
           N_stim, ts_stim, ns_stim,
           w_e, w_i, w_ei, w_ie, w_ee, w_ii, I_e, I_i,
           I_i_sigma=0, I_e_sigma=0, N=400, stdp=False, balanced=True,
-          seed=None, verbose=True, parallel=False):
+          seed=None, verbose=True, parallel=False, 
+          conn_seed=None, analysis=True, save=True):
     """Model IIIIIEEEEEEE!"""
 
     np.random.seed(seed)
@@ -138,32 +139,71 @@ def model(name, time,
     # --
     # Syn
     # Internal
-    C_ei = Synapses(P_e, P_i, on_pre='g_e += w_ei', delay=delay)
-    C_ei.connect(True, p=p_ei)
+    if conn_seed:
+        conn_prng = np.random.RandomState(int(conn_seed))
 
-    C_ie = Synapses(P_i, P_e, on_pre='g_i += w_ie', delay=delay)
-    C_ie.connect(True, p=p_ie)
+        # Internal
+        i, j, conn_prng = create_ij(p_ei, len(P_e), len(P_i), conn_prng)
+        C_ei = Synapses(P_e, P_i, on_pre='g_e += w_ei', delay=delay)
+        C_ei.connect(i=i, j=j)
 
-    C_ii = Synapses(P_i, P_i, on_pre='g_i += w_ii', delay=delay)
-    C_ii.connect(True, p=p_ii)
+        i, j, conn_prng = create_ij(p_ie, len(P_i), len(P_e), conn_prng)
+        C_ie = Synapses(P_i, P_e, on_pre='g_i += w_ie', delay=delay)
+        C_ie.connect(i=i, j=j)
 
-    C_ee = Synapses(P_e, P_e, on_pre='g_ee += w_ee', delay=delay)
-    C_ee.connect(True, p=p_e)
+        i, j, conn_prng = create_ij(p_ii, len(P_i), len(P_i), conn_prng)
+        C_ii = Synapses(P_i, P_i, on_pre='g_i += w_ii', delay=delay)
+        C_ii.connect(i=i, j=j)
 
-    # External
-    C_stim_e = Synapses(P_stim, P_e[:N_stim], on_pre='g_s += w_e')
-    C_stim_e.connect(True, p=p_e)
-    C_stim_i = Synapses(P_stim, P_i[:int(N_stim / 4)], on_pre='g_i += w_i')
-    C_stim_i.connect(True, p=p_e)
+        i, j, conn_prng = create_ij(p_e, len(P_e), len(P_e), conn_prng)
+        C_ee = Synapses(P_e, P_e, on_pre='g_ee += w_ee', delay=delay)
+        C_ee.connect(i=i, j=j)
+
+        # External
+        i, j, conn_prng = create_ij(p_e, len(P_stim), len(P_e), conn_prng)
+        C_stim_e = Synapses(P_stim, P_e[:N_stim], on_pre='g_s += w_e')
+        C_stim_e.connect(i=i, j=j)
+
+        i, j, conn_prng = create_ij(p_i, len(P_stim), len(P_i), conn_prng)
+        C_stim_i = Synapses(P_stim, P_i[:int(N_stim / 4)], on_pre='g_i += w_i')
+        C_stim_i.connect(i=i, j=j)
+    else:
+        # Internal
+        C_ei = Synapses(P_e, P_i, on_pre='g_e += w_ei', delay=delay)
+        C_ei.connect(True, p=p_ei)
+
+        C_ie = Synapses(P_i, P_e, on_pre='g_i += w_ie', delay=delay)
+        C_ie.connect(True, p=p_ie)
+
+        C_ii = Synapses(P_i, P_i, on_pre='g_i += w_ii', delay=delay)
+        C_ii.connect(True, p=p_ii)
+
+        C_ee = Synapses(P_e, P_e, on_pre='g_ee += w_ee', delay=delay)
+        C_ee.connect(True, p=p_e)
+
+        # External
+        C_stim_e = Synapses(P_stim, P_e[:N_stim], on_pre='g_s += w_e')
+        C_stim_e.connect(True, p=p_e)
+        C_stim_i = Synapses(P_stim, P_i[:int(N_stim / 4)], on_pre='g_i += w_i')
+        C_stim_i.connect(True, p=p_e)
 
     if balanced:
-        P_e_back = PoissonGroup(8000, rates=10 * Hz)
-        P_i_back = PoissonGroup(2000, rates=10 * Hz)
+        Nb = 10000
+        P_e_back = PoissonGroup(0.8 * Nb, rates=12 * Hz)
+        P_i_back = PoissonGroup(0.2 * Nb, rates=12 * Hz)
+
+        # Adjusted to these numbers by hand, based on the Vm_hat
+        # estimation equation (see results below). This equation 
+        # was taken from p742 of
+        # Destexhe, A., Rudolph, M. & Paré, D., 2003. 
+        # The high-conductance state of neocortical neurons in vivo. 
+        # Nature Reviews Neuroscience, 4(9), pp.739–751. 
+        # begining with the 0.73 and 3.67 numbers in that
+        # manuscript
+        w_e_back = 4 * 0.73 * g_l  
+        w_i_back = 2.85 * w_e_back
 
         p_back = 0.1
-        w_e_back = 1.0 / (8000 * p_back) * msiemens
-        w_i_back = 4.0 / (2000 * p_back) * msiemens
-
         C_back_e = Synapses(P_e_back, P_e, on_pre='g_e += w_e_back')
         C_back_e.connect(True, p=p_back)
         C_back_i = Synapses(P_i_back, P_e, on_pre='g_i += w_i_back')
@@ -223,16 +263,8 @@ def model(name, time,
         C_ee.connect(True, p=p_e)
         C_ee.w_stdp = 'w_ee + (randn() * 0.1 * w_ee)'
 
-    # Store connectivity data
-    connected_e = (C_stim_e.i_, C_stim_e.j_)
-    connected_i = (C_stim_i.i_, C_stim_i.j_)
-    connected_ee = (C_ee.i_, C_ee.j_)
-    connected_ie = (C_ie.i_, C_ie.j_)
-    connected_ei = (C_ei.i_, C_ei.j_)
-    connected_ii = (C_ii.i_, C_ii.j_)
-
     # --
-    # Create network and save
+    # Create network 
     net = Network(
         P_e, P_i, P_stim, C_ee, C_ii, C_ie, C_ei, C_stim_e
     )
@@ -246,9 +278,11 @@ def model(name, time,
     pop_stim = PopulationRateMonitor(P_stim)
     pop_e = PopulationRateMonitor(P_e)
     pop_i = PopulationRateMonitor(P_i)
-    traces_e = StateMonitor(P_e, ('V', 'g_e', 'g_i', 'g_s', 'g_ee'),
+    traces_e = StateMonitor(P_e, 
+                            ('V', 'g_e', 'g_i', 'g_s', 'g_ee'),
                             record=True)
-    traces_i = StateMonitor(P_i, ('V', 'g_e', 'g_i'),
+    traces_i = StateMonitor(P_i, 
+                            ('V', 'g_e', 'g_i'),
                             record=True)
 
     monitors = [spikes_i, spikes_e, spikes_stim,
@@ -265,16 +299,37 @@ def model(name, time,
     net.add(monitors)
 
     # -- 
+    # Run
     if verbose: print(">>> Running")
     report = None
     if verbose: report = 'text'
 
     net.run(time, report=report)
 
-    # --
+    # Post-run processing
     if verbose: print(">>> Analyzing and saving")
+
+    # Extract connectivity data
+    connected_e = (C_stim_e.i_, C_stim_e.j_)
+    connected_i = (C_stim_i.i_, C_stim_i.j_)
+    connected_ee = (C_ee.i_, C_ee.j_)
+    connected_ie = (C_ie.i_, C_ie.j_)
+    connected_ei = (C_ei.i_, C_ei.j_)
+    connected_ii = (C_ii.i_, C_ii.j_)
+    
+    # Useful for assesing background state
+    Mge = traces_e.g_e[:].mean()
+    Mgi = traces_e.g_i[:].mean()
+    Vm_hat = float(((g_l * V_l) + (Mge * V_e) + (Mgi * V_i)) / (g_l + Mge + Mgi))
+
+    Vm = np.mean(traces_e.V_[:])
+    Vm_std = np.std(traces_e.V_[:])
+
     result = {
         'N_stim': N_stim,
+        'Vm_hat' : Vm_hat,
+        'Vm' : Vm,
+        'Vm_std' : Vm_std,
         'time': time / second,
         'dt': time_step / second,
         'spikes_i': spikes_i,
@@ -294,41 +349,70 @@ def model(name, time,
         'connected_ii': connected_ii,
         'connected_ee': connected_ee
     }
+    
+    if save:
+        save_result(name, result)
 
-    save_result(name, result)
-    analyze_result(name, result, fs=1 / result['dt'], save=True)
+        # Save params
+        params = {
+            'N_e' : N_e,
+            'N_i' : N_i,
+            'I_e' : float(I_e),
+            'I_i' : float(I_i),
+            'delay' : float(delay),
+            'p_ei' : float(p_ei),
+            'p_ie' : float(p_ie),
+            'p_e' : float(p_e),
+            'p_ii' : float(p_ii),
+            'w_e' : float(w_e),
+            'w_i' : float(w_i),
+            'w_ei' : float(w_ei),
+            'w_ie' : float(w_ie),
+            'w_ee' : float(w_ee),
+            'w_ii' : float(w_ii),
+            'w_m' : float(w_m),
+            'time' : float(time),
+            'dt' : float(time_step)
+        }
+        with open(name + '_params.csv', 'w') as f:
+            [f.write('{0},{1:.5e}\n'.format(k, v))
+             for k, v in params.items()]
 
-    # -- Save params
-    params = {
-        'N_e' : N_e,
-        'N_i' : N_i,
-        'I_e' : float(I_e),
-        'I_i' : float(I_i),
-        'delay' : float(delay),
-        'p_ei' : float(p_ei),
-        'p_ie' : float(p_ie),
-        'p_e' : float(p_e),
-        'p_ii' : float(p_ii),
-        'w_e' : float(w_e),
-        'w_i' : float(w_i),
-        'w_ei' : float(w_ei),
-        'w_ie' : float(w_ie),
-        'w_ee' : float(w_ee),
-        'w_ii' : float(w_ii),
-        'w_m' : float(w_m),
-        'time' : float(time),
-        'dt' : float(time_step)
-    }
-    with open(name + '_params.csv', 'w') as f:
-        [f.write('{0},{1:.5e}\n'.format(k, v))
-         for k, v in params.items()]
+    if analysis:
+        analyze_result(name, result, fs=1 / result['dt'], save=True)
 
-    # -- If we're running in parallel don't return anything
-    # to save memory.
+    # -- If running in parallel don't return anything to save memory.
     if parallel:
         result = None
 
     return result
+
+
+def min_syn(connected_i, connected_j, n_syn):
+    """Find all post-synaptic neurons (j) with a minimum number
+    of synapses, and all the pre-synaptic neurons that make those
+    connections.
+
+    Params
+    -----
+    connected_i : sequence
+        List of pre-synaptic neurons
+    connected_j : sequence
+        List of post-synaptic neurons
+    n_syn : int
+        Minimum synpase number
+    """
+    # Find neurons who have >= n_syn
+    sel_i, sel_j = [], []
+    for i, j in zip(connected_i, connected_i):
+        if np.sum(j == connected_j) >= n_syn:
+            sel_i.append(i)
+            sel_j.append(j)
+
+    ns_i = np.unique(sel_i)
+    ns_j = np.unique(sel_j)
+    
+    return ns_i, ns_j
 
 
 def save_result(name, result, fs=10000):
@@ -363,7 +447,6 @@ def save_result(name, result, fs=10000):
     v_i = traces_i.V_[:]
 
     # --
-    # Save full
     # Spikes
     np.savetxt(name + '_spiketimes_e.csv',
                np.vstack([spikes_e.i, spikes_e.t, ]).transpose(),
@@ -486,6 +569,7 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     ns_stim, ts_stim = ns_stim[mask], ts_stim[mask]
 
     # -- Analyze
+    # All N
     # Mean rate
     analysis['rate_stim'] = ts_stim.size / time
     analysis['rate_e'] = ts_e.size / time
@@ -559,5 +643,14 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
         with open(name + '_analysis.csv', 'w') as f:
             [f.write('{0},{1:.3e}\n'.format(k, v))
              for k, v in analysis.items()]
+
+    # Slect only neurons with n_syn input connections,
+    # the stimulus propagation set and rerun coding analyses
+    n_syn = 3
+    i_e, j_e = result['connected_e']
+    ns_i, ns_j = min_syn(i_e, j_e, n_syn)
+    ns_tot = np.unique(np.concatenate([ns_i, ns_j]))
+                       
+    # Filter, ns_ and ts_ using ns_tot
 
     return analysis
