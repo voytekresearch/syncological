@@ -168,12 +168,12 @@ def model(name, time,
         C_ee.connect(i=i, j=j)
 
         # External
-        i, j, conn_prng = create_ij(p_e, len(P_stim), len(P_e), conn_prng)
-        C_stim_e = Synapses(P_stim, P_e, on_pre='g_s += w_e')
+        i, j, conn_prng = create_ij(p_e, N_stim, N_stim, conn_prng)
+        C_stim_e = Synapses(P_stim, P_e[:N_stim], on_pre='g_s += w_e')
         C_stim_e.connect(i=i, j=j)
 
-        i, j, conn_prng = create_ij(p_e, len(P_stim) / 4, len(P_i), conn_prng)
-        C_stim_i = Synapses(P_stim, P_i, on_pre='g_i += w_i')
+        i, j, conn_prng = create_ij(p_e, N_stim, int(N_stim / 4), conn_prng)
+        C_stim_i = Synapses(P_stim, P_i[:N_stim], on_pre='g_i += w_i')
         C_stim_i.connect(i=i, j=j)
     else:
         # Internal
