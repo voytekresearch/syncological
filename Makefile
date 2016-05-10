@@ -772,9 +772,7 @@ ing_exp24:
 
 # ========================================================================
 # START ei2 EXPERIMENTS
-#
-
-# 09597fe5d4e9ea6b4d244ff1873236dea1cef871
+# 09597fe5d4e9ea6b4d244ff1873236dea1
 exp200:
 	-mkdir $(DATADIR)/exp200
 	-rm $(DATADIR)/exp200/*
@@ -785,7 +783,7 @@ exp201:
 	-rm $(DATADIR)/exp201/
 	nice -n 19 python bin/ei2.py --ing $(DATADIR)/exp201 2000
 
-
+# abf031721220a53ebeaf0fc36aa2590be207154f
 exp202:
 	-mkdir $(DATADIR)/exp202
 	-rm $(DATADIR)/exp202/*
@@ -794,5 +792,32 @@ exp202:
 exp203:
 	-mkdir $(DATADIR)/exp203
 	-rm $(DATADIR)/exp203/*
-	nice -n 19 python bin/ei2.py --ping --no_balanced --n_job=6 $(DATADIR)/exp203 1000
+	nice -n 19 python bin/ei2.py --ing --no_balanced --n_job=6 $(DATADIR)/exp203 1000
 
+
+# TODO
+# Rerun of 200/1 but using the retuned balanced state
+# 69e474c9e1e97e9e8d3a0620007cfaf5e8892b5c
+exp204:
+	-mkdir $(DATADIR)/exp204
+	-rm $(DATADIR)/exp204/*
+	nice -n 19 python bin/ei2.py --ping $(DATADIR)/exp204 500
+
+exp205:
+	-mkdir $(DATADIR)/exp205
+	-rm $(DATADIR)/exp205/
+	nice -n 19 python bin/ei2.py --ing $(DATADIR)/exp205 500
+
+# Do a run where Conn is fixed, and everything else varies
+# 9e38bdb5b38f7b0cb5d963a71fb1b81ab44e1fb6
+exp206:
+	-mkdir $(DATADIR)/exp206
+	-rm $(DATADIR)/exp206/*
+	nice -n 19 python bin/ei2.py --ping --conn_seed=13 $(DATADIR)/exp206 1000
+
+exp207:
+	-mkdir $(DATADIR)/exp207
+	-rm $(DATADIR)/exp207/
+	nice -n 19 python bin/ei2.py --ing --conn_seed=13 $(DATADIR)/exp207 1000
+
+# TODO Do a run where Conn varies and nothing else
