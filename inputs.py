@@ -29,7 +29,7 @@ def create_ij(p, Ni, Nj, prng=None):
                 conn_i.append(i)
                 conn_j.append(j)
 
-    return conn_i, conn_j
+    return conn_i, conn_j, prng
 
     
 def thal_spikes(t, f, N, k, prng=None):

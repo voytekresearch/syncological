@@ -41,9 +41,13 @@ if __name__ == "__main__":
 
     save_path = args['PATH']
     k = int(args['K'])
-    stim_seed = int(args['--stim_seed'])
     n_stim = int(args['--n_stim'])
- 
+
+    conn_seed = None
+    if args['--conn_seed']:
+        conn_seed = int(args['--conn_seed'])
+    
+    stim_seed = int(args['--stim_seed'])
     prng = np.random.RandomState(stim_seed)
 
     balanced = True
@@ -54,30 +58,25 @@ if __name__ == "__main__":
     # Params
     # -- Fixed
     # NOTE: expand CLI API to mod these, if needed in the future
-    w_i = 0.5
-    w_ee = 0.5
-    w_ii = 0.5
-    w_ei = 1.0
+    w_i = 1.0
+    w_ee = 1.0
+    w_ii = 1.0
+    w_ei = 2.0
 
-    I_e = 0.1
-    I_i = 0.1
+    I_e = 0.0
+    I_i = 0.0
     if args['--ing']:
         I_i = 0.8
 
     # -- Random
     codes = range(k)
-    w_es = prng.uniform(2, 10, k)
-    w_ies = prng.uniform(0.1, 3.0, k)
+    w_es = prng.uniform(2, 8.0, k)
+    w_ies = prng.uniform(1.0, 8.0, k)
     params = zip(codes, w_es, w_ies)
     
     np.savez(os.path.join(save_path, "params"),
             codes=codes, w_es=w_es, w_ies=w_ies, I_e=I_e,
             w_i=w_i, w_ee=w_ee, w_ii=w_ii, w_ei=w_ei, I_i=I_i)
-
-    # -- Fix connections?
-    conn_seed = None
-    if args['--conn_seed']:
-        conn_seed = int(args['--conn_seed'])
 
     # ------------------------------------------------------------
     # Create input

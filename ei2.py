@@ -6,7 +6,7 @@ Implements a sparse PING E-I model, based Borges et al PNAS 2005.
 from __future__ import division
 import numpy as np
 from brian2 import *
-from syncological.inputs import gaussian_impulse
+from syncological.inputs import gaussian_impulse, create_ij
 from scipy.stats.mstats import zscore
 from scipy.spatial.distance import cosine as cosined
 from foof.util import create_psd
@@ -42,15 +42,21 @@ def model(name, time,
 
     w_e = w_e * msiemens
     w_i = w_i * msiemens
+
+    w_ei = w_ei * msiemens  
+    w_ie = w_ie * msiemens
+    w_ee = w_ee * msiemens
+    w_ii = w_ii * msiemens
+
+    # Should I be norming for net size all. Bio-sense is?
     # w_e = w_e / (p_e * N_e) * msiemens
     # w_i = w_i / (p_e * N_i) * msiemens
+    # w_ei = w_ei / (p_ei * N_e) * msiemens  
+    # w_ie = w_ie / (p_ie * N_i) * msiemens
+    # w_ee = w_ee / (p_e * N_e) * msiemens
+    # w_ii = w_ii / (p_ii * N_i) * msiemens
 
-    w_ei = w_ei / (p_ei * N_e) * msiemens  # Should I be norming for net size all. Bio-sense is?
-    w_ie = w_ie / (p_ie * N_i) * msiemens
-    w_ee = w_ee / (p_e * N_e) * msiemens
-    w_ii = w_ii / (p_ii * N_i) * msiemens
-
-    w_m = 0 / N_e * msiemens  # Read ref 47 to get value
+    w_m = 0 * msiemens  # Read ref 47 to get value
 
     # --
     # Fixed
@@ -163,11 +169,11 @@ def model(name, time,
 
         # External
         i, j, conn_prng = create_ij(p_e, len(P_stim), len(P_e), conn_prng)
-        C_stim_e = Synapses(P_stim, P_e[:N_stim], on_pre='g_s += w_e')
+        C_stim_e = Synapses(P_stim, P_e, on_pre='g_s += w_e')
         C_stim_e.connect(i=i, j=j)
 
-        i, j, conn_prng = create_ij(p_i, len(P_stim), len(P_i), conn_prng)
-        C_stim_i = Synapses(P_stim, P_i[:int(N_stim / 4)], on_pre='g_i += w_i')
+        i, j, conn_prng = create_ij(p_e, len(P_stim) / 4, len(P_i), conn_prng)
+        C_stim_i = Synapses(P_stim, P_i, on_pre='g_i += w_i')
         C_stim_i.connect(i=i, j=j)
     else:
         # Internal
@@ -406,7 +412,7 @@ def min_syn(connected_i, connected_j, n_syn):
     """
     # Find neurons who have >= n_syn
     sel_i, sel_j = [], []
-    for i, j in zip(connected_i, connected_i):
+    for i, j in zip(connected_i, connected_j):
         if np.sum(j == connected_j) >= n_syn:
             sel_i.append(i)
             sel_j.append(j)
@@ -551,7 +557,7 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
 
     v_e = traces_e.V_[:]
     v_i = traces_i.V_[:]
-
+    # -------------------------------------------------------------------------
     # -- Select data
     # Analyze only N_stim
     N_stim = result['N_stim']
@@ -570,6 +576,10 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     mask = ts_stim >= drop_before
     ns_stim, ts_stim = ns_stim[mask], ts_stim[mask]
 
+    assert ns_e.shape == ts_e.shape
+    assert ns_stim.shape == ts_stim.shape
+
+    # -------------------------------------------------------------------------
     # -- Analyze
     # All N
     # Mean rate
@@ -641,22 +651,65 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     analysis['sta_distance'] = cosined(sta_e, sta_i)
     analysis['rmse'] = np.sqrt(np.mean((sta_e - sta_i) ** 2))
 
+    # -------------------------------------------------------------------------
+    # Only include neurons with at least 3 
+    # post-syn connections. The rest are not going 
+    # be passing stim's message anyway, probably.
+    n_syn = 10
+    i_e, j_e = result['connected_e']
+    _, ns_j = min_syn(i_e, j_e, n_syn)
+
+    # drop all neurons not in ns_j from both
+    # _stim and _e
+    m_stim = np.zeros_like(ns_stim, dtype=np.bool)
+    m_e = np.zeros_like(ns_e, dtype=np.bool)
+    for n in ns_j:
+        m_e = np.logical_or(n == ns_e, m_e)
+        m_stim = np.logical_or(n == ns_stim, m_stim)
+
+    ns_e, ts_e = ns_e[m_e], ts_e[m_e]
+    ns_stim, ts_stim = ns_stim[m_stim], ts_stim[m_stim]
+
+    assert ns_e.size == np.sum(m_e)
+    assert ns_e.shape == ts_e.shape
+    assert ns_stim.shape == ts_stim.shape
+
+    # Quick estimate of how many spikes are left
+    analysis['rate_stim_ms'] = ts_stim.size / time
+    analysis['rate_e_ms'] = ts_e.size / time
+
+    # ISI and SPIKE
+    sto_e = spk.SpikeTrain(ts_e, (ts_e.min(), ts_e.max()))
+    sto_stim = spk.SpikeTrain(ts_stim, (ts_stim.min(), ts_stim.max()))
+    sto_e.sort()
+    sto_stim.sort()
+    analysis['s_isi_ms'] = spk.isi_distance(sto_stim, sto_e)
+    analysis['s_sync_ms'] = spk.spike_sync(sto_stim, sto_e)
+
+    # lev and KL distance
+    ordered_e, _ = futil.ts_sort(ns_e, ts_e)
+    ordered_stim, _ = futil.ts_sort(ns_stim, ts_stim)
+    analysis['lev_spike_ms'] = futil.levenshtein(
+        list(ordered_stim), list(ordered_e))
+    analysis['lev_spike_ms_n'] = futil.levenshtein(
+        list(ordered_stim), list(ordered_e)) / len(ordered_stim)
+    analysis['kl_spike_ms'] = futil.kl_divergence(ordered_stim, ordered_e)
+
+    ra_e, _, _ = futil.rate_code(ts_e, (0, time), 20e-3)
+    ra_stim, _, _ = futil.rate_code(ts_stim, (0, time), 20e-3)
+    analysis['lev_fine_rate_ms'] = futil.levenshtein(ra_stim, ra_e)
+    analysis['lev_fine_rate_ms_n'] = futil.levenshtein(ra_stim, ra_e) / len(ra_stim)
+    analysis['kl_fine_rate_ms'] = futil.kl_divergence(ra_stim, ra_e)
+
+    ra_e, _, _ = futil.rate_code(ts_e, (0, time), 50e-3)
+    ra_stim, _, _ = futil.rate_code(ts_stim, (0, time), 50e-3)
+    analysis['lev_course_rate_ms'] = futil.levenshtein(ra_stim, ra_e)
+    analysis['lev_course_rate_ms'] = futil.levenshtein(ra_stim, ra_e) / len(ra_stim)
+    analysis['kl_course_rate_ms'] = futil.kl_divergence(ra_stim, ra_e)
+
     if save:
         with open(name + '_analysis.csv', 'w') as f:
             [f.write('{0},{1:.3e}\n'.format(k, v))
              for k, v in analysis.items()]
-
-    # --
-    # Only include neurons with at lest 3 
-    # post-syn connections. The rest we're not going 
-    # be passing stim's message anyway, probably.
-    n_syn = 3
-    i_e, j_e = result['connected_e']
-    ns_i, ns_j = min_syn(i_e, j_e, n_syn)
-
-    # drop all neurons not in ns_i from both
-    # _stim and _e
-
-    # TODO
 
     return analysis
