@@ -40,10 +40,12 @@ def model(name, time,
     p_e = 0.1
     p_ii = 0.6
 
-    w_e = w_e / (p_e * N_e) * msiemens
-    w_i = w_i / (p_e * N_i) * msiemens
+    w_e = w_e * msiemens
+    w_i = w_i * msiemens
+    # w_e = w_e / (p_e * N_e) * msiemens
+    # w_i = w_i / (p_e * N_i) * msiemens
 
-    w_ei = w_ei / (p_ei * N_e) * msiemens
+    w_ei = w_ei / (p_ei * N_e) * msiemens  # Should I be norming for net size all. Bio-sense is?
     w_ie = w_ie / (p_ie * N_i) * msiemens
     w_ee = w_ee / (p_e * N_e) * msiemens
     w_ii = w_ii / (p_ii * N_i) * msiemens
@@ -189,7 +191,7 @@ def model(name, time,
 
     if balanced:
         Nb = 10000
-        P_e_back = PoissonGroup(0.8 * Nb, rates=12 * Hz)
+        P_e_back = PoissonGroup(0.8 * Nb, rates=12 * Hz)  
         P_i_back = PoissonGroup(0.2 * Nb, rates=12 * Hz)
 
         # Adjusted to these numbers by hand, based on the Vm_hat
@@ -576,9 +578,9 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     analysis['rate_i'] = ts_i.size / time
 
     # kappa
-    r_e = futil.kappa(ns_e, ts_e, ns_e, ts_e, (0, 1), 1.0 / 1000)  # 1 ms bins
+    r_e = futil.kappa(ns_e, ts_e, ns_e, ts_e, (0, time), 1.0 / 1000)  # 1 ms bins
     analysis['kappa_e'] = r_e
-    r_i = futil.kappa(ns_i, ts_i, ns_i, ts_i, (0, 1), 1.0 / 1000)  # 1 ms bins
+    r_i = futil.kappa(ns_i, ts_i, ns_i, ts_i, (0, time), 1.0 / 1000)  # 1 ms bins
     analysis['kappa_i'] = r_i
 
     # fano
@@ -604,14 +606,14 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
 
     analysis['kl_spike_e'] = futil.kl_divergence(ordered_stim, ordered_e)
 
-    ra_e, _, _ = futil.rate_code(ts_e, (0, 1), 20e-3)
-    ra_stim, _, _ = futil.rate_code(ts_stim, (0, 1), 20e-3)
+    ra_e, _, _ = futil.rate_code(ts_e, (0, time), 20e-3)
+    ra_stim, _, _ = futil.rate_code(ts_stim, (0, time), 20e-3)
     analysis['lev_fine_rate_e'] = futil.levenshtein(ra_stim, ra_e)
     analysis['lev_fine_rate_e_n'] = futil.levenshtein(ra_stim, ra_e) / len(ra_stim)
     analysis['kl_fine_rate_e'] = futil.kl_divergence(ra_stim, ra_e)
 
-    ra_e, _, _ = futil.rate_code(ts_e, (0, 1), 50e-3)
-    ra_stim, _, _ = futil.rate_code(ts_stim, (0, 1), 50e-3)
+    ra_e, _, _ = futil.rate_code(ts_e, (0, time), 50e-3)
+    ra_stim, _, _ = futil.rate_code(ts_stim, (0, time), 50e-3)
     analysis['lev_course_rate_e'] = futil.levenshtein(ra_stim, ra_e)
     analysis['lev_course_rate_e_n'] = futil.levenshtein(ra_stim, ra_e) / len(ra_stim)
     analysis['kl_course_rate_e'] = futil.kl_divergence(ra_stim, ra_e)
@@ -644,13 +646,17 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
             [f.write('{0},{1:.3e}\n'.format(k, v))
              for k, v in analysis.items()]
 
-    # Slect only neurons with n_syn input connections,
-    # the stimulus propagation set and rerun coding analyses
+    # --
+    # Only include neurons with at lest 3 
+    # post-syn connections. The rest we're not going 
+    # be passing stim's message anyway, probably.
     n_syn = 3
     i_e, j_e = result['connected_e']
     ns_i, ns_j = min_syn(i_e, j_e, n_syn)
-    ns_tot = np.unique(np.concatenate([ns_i, ns_j]))
-                       
-    # Filter, ns_ and ts_ using ns_tot
+
+    # drop all neurons not in ns_i from both
+    # _stim and _e
+
+    # TODO
 
     return analysis
