@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """Usage: ei2.py PATH K 
     (--ing | --ping)
     [--no_balanced]

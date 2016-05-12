@@ -13,7 +13,6 @@ from foof.util import create_psd
 from fakespikes import util as futil
 import pyspike as spk
 
-
 def model(name, time,
           N_stim, ts_stim, ns_stim,
           w_e, w_i, w_ei, w_ie, w_ee, w_ii, I_e, I_i,
