@@ -7,11 +7,12 @@
     [--conn_seed=CONN_SEED]
     [--n_stim=NSTIM]
     [--n_job=NJOB]
+    [--restart_k=RK]
 
-Simulate a EI circuit with HH neurons.
+Simulate K random EI circuits of HH neurons.
 
     Arguments:
-        PATH        path to the results files
+        PATH        path to save results 
         K           number of simulations to run
 
     Options:
@@ -23,6 +24,7 @@ Simulate a EI circuit with HH neurons.
         --conn_seed=CONN_SEED       seed for creating connections 
         --n_stim=NSTIM              number of driving neurons [default: 100]
         --n_job=NJOB                number of parallel jobs [default: 10]
+        --restart_k=RK              'restart' the stimulation at k
 
 """
 from __future__ import division
@@ -42,7 +44,14 @@ if __name__ == "__main__":
     args = docopt(__doc__, version='1.0')
 
     save_path = args['PATH']
+    
+    # Start at 0, or restart?
+    k0 = 0
+    if args['--restart_k']:
+        k0 = int(args['--restart_k'])
+    
     k = int(args['K'])
+    
     n_stim = int(args['--n_stim'])
 
     conn_seed = None
@@ -71,9 +80,9 @@ if __name__ == "__main__":
         I_i = 0.8
 
     # -- Random
-    codes = range(k)
-    w_es = prng.uniform(2, 8.0, k)
-    w_ies = prng.uniform(1.0, 8.0, k)
+    codes = range(k0, k)
+    w_es = prng.uniform(2, 8.0, k)[k0:k]
+    w_ies = prng.uniform(1.0, 8.0, k)[k0:k]
     params = zip(codes, w_es, w_ies)
     
     np.savez(os.path.join(save_path, "params"),
