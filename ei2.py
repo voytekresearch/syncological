@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Implements a sparse PING E-I model, based Borges et al PNAS 2005.
+Implements a sparse E-I model, loosely based Borges et al PNAS 2005.
 """
 from __future__ import division
 import numpy as np
@@ -198,15 +198,14 @@ def model(name, time,
         Nb = 10000
         P_e_back = PoissonGroup(0.8 * Nb, rates=12 * Hz)  
         P_i_back = PoissonGroup(0.2 * Nb, rates=12 * Hz)
-
+        
         # Adjusted to these numbers by hand, based on the Vm_hat
         # estimation equation (see results below). This equation 
-        # was taken from p742 of
+        # Began with the 0.73 and 3.67 that manuscript.
+        # Equation and numbers were taken from p742 of
         # Destexhe, A., Rudolph, M. & Paré, D., 2003. 
         # The high-conductance state of neocortical neurons in vivo. 
         # Nature Reviews Neuroscience, 4(9), pp.739–751. 
-        # begining with the 0.73 and 3.67 numbers in that
-        # manuscript
         w_e_back = 4 * 0.73 * g_l  
         w_i_back = 2.85 * w_e_back
 
