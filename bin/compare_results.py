@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """Usage: compare_results2.py PATH NAME -r REF MODELS...
    [--n_syn=NSYN]
+   [--ref_path=RPATH]
 
 Compare model results of a reference model.
 
@@ -17,6 +18,7 @@ Note: assumes models run were from ei2, found in
     Options:
         -h --help                   show this screen
         --n_syn=NSYN                minimum post-synapse number [default: 0]
+        --ref_path=RPATH            optiona seperate path to reference data
 
 """
 from __future__ import division
@@ -43,7 +45,11 @@ if __name__ == "__main__":
     models = [int(f) for f in args['MODELS']]
     n_syn = int(args['--n_syn'])
 
-    analysis = compare(ref, models, path)
+    ref_path = args['--ref_path']
+    if ref_path is None:
+        ref_path = path
+
+    analysis = compare(ref, models, path, ref_path=ref_path)
 
     df = pd.DataFrame(analysis)
     df.to_csv(name, sep=",", index=False)
