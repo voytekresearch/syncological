@@ -82,7 +82,7 @@ if __name__ == "__main__":
     # -- Random
     codes = range(k0, k)
     w_es = prng.uniform(2, 8.0, k)[k0:k]
-    w_ies = prng.uniform(1.0, 8.0, k)[k0:k]
+    w_ies = prng.uniform(1.0, 16.0, k)[k0:k]
     params = zip(codes, w_es, w_ies)
     
     np.savez(os.path.join(save_path, "params"),
