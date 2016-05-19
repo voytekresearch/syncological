@@ -137,5 +137,5 @@ if __name__ == "__main__":
             I_e=I_e, I_i=I_i,
             verbose=False, parallel=True, 
             seed=stim_seed, conn_seed=conn_seed + code) 
-        for code, w_e, w_ie in params
+        for code in codes
     )
