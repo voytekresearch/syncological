@@ -9,7 +9,7 @@
     [--n_job=NJOB]
     [--restart_k=RK]
 
-Simulate K random EI circuits of HH neurons.
+Simulate K very sparse EI circuits, randomizing w_ie and w_e.
 
     Arguments:
         PATH        path to save results 
@@ -81,7 +81,7 @@ if __name__ == "__main__":
 
     # -- Random
     codes = range(k0, k)
-    w_es = prng.uniform(2, 8.0, k)[k0:k]
+    w_es = prng.uniform(2, 16.0, k)[k0:k]
     w_ies = prng.uniform(1.0, 16.0, k)[k0:k]
     params = zip(codes, w_es, w_ies)
     
