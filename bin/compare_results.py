@@ -49,7 +49,8 @@ if __name__ == "__main__":
     if ref_path is None:
         ref_path = path
 
-    analysis = compare(ref, models, path, ref_path=ref_path)
+    analysis, skipped = compare(ref, models, path, ref_path=ref_path)
+    print("The following could not be compared:\n{}".format(skipped))
 
     df = pd.DataFrame(analysis)
     df.to_csv(name, sep=",", index=False)

@@ -13,31 +13,12 @@ from foof.util import create_psd
 from fakespikes import util as futil
 import pyspike as spk
 
-
-def model(name,
-          time,
-          N_stim,
-          ts_stim,
-          ns_stim,
-          w_e,
-          w_i,
-          w_ei,
-          w_ie,
-          w_ee,
-          w_ii,
-          I_e,
-          I_i,
-          I_i_sigma=0,
-          I_e_sigma=0,
-          N=400,
-          stdp=False,
-          balanced=True,
-          seed=None,
-          verbose=True,
-          parallel=False,
-          conn_seed=None,
-          analysis=True,
-          save=True):
+def model(name, time,
+          N_stim, ts_stim, ns_stim,
+          w_e, w_i, w_ei, w_ie, w_ee, w_ii, I_e, I_i,
+          I_i_sigma=0, I_e_sigma=0, N=400, stdp=False, balanced=True,
+          seed=None, verbose=True, parallel=False, 
+          conn_seed=None, analysis=True, save=True):
     """Model IIIIIEEEEEEE!"""
 
     np.random.seed(seed)
@@ -53,15 +34,15 @@ def model(name,
     N_i = int(N * 0.2)
 
     delay = 2 * ms
-    p_ei = 0.1
-    p_ie = 0.1
-    p_e = 0.1
-    p_ii = 0.6
+    p_ei = 0.03
+    p_ie = 0.03
+    p_e = 0.03
+    p_ii = 0.15
 
     w_e = w_e * msiemens
     w_i = w_i * msiemens
 
-    w_ei = w_ei * msiemens
+    w_ei = w_ei * msiemens  
     w_ie = w_ie * msiemens
     w_ee = w_ee * msiemens
     w_ii = w_ii * msiemens
@@ -133,17 +114,20 @@ def model(name,
     I : amp
     """
 
-    P_e = NeuronGroup(N_e,
-                      model=hh,
-                      threshold='V >= V_thresh',
-                      refractory=3 * ms,
-                      method='rk2')
+    P_e = NeuronGroup(
+        N_e, model=hh,
+        threshold='V >= V_thresh',
+        refractory=3 * ms,
+        method='rk2'
+    )
 
-    P_i = NeuronGroup(N_i,
-                      model=hh,
-                      threshold='V >= V_thresh',
-                      refractory=3 * ms,
-                      method='rk2')
+    P_i = NeuronGroup(
+        N_i,
+        model=hh,
+        threshold='V >= V_thresh',
+        refractory=3 * ms,
+        method='rk2'
+    )
 
     P_e.V = V_l
     P_i.V = V_l
@@ -158,7 +142,7 @@ def model(name,
     else:
         P_i.I = np.random.normal(I_i, I_i_sigma, N_i) * uamp
     P_stim = SpikeGeneratorGroup(N_stim, ns_stim, ts_stim * second)
-
+    
     # --
     # Syn
     # Internal
@@ -212,17 +196,17 @@ def model(name,
 
     if balanced:
         Nb = 10000
-        P_e_back = PoissonGroup(0.8 * Nb, rates=12 * Hz)
+        P_e_back = PoissonGroup(0.8 * Nb, rates=12 * Hz)  
         P_i_back = PoissonGroup(0.2 * Nb, rates=12 * Hz)
-
+        
         # Adjusted to these numbers by hand, based on the Vm_hat
         # estimation equation (see results below). This equation 
         # Began with the 0.73 and 3.67 that manuscript.
         # Equation and numbers were taken from p742 of
         # Destexhe, A., Rudolph, M. & Paré, D., 2003. 
         # The high-conductance state of neocortical neurons in vivo. 
-        # Nature Reviews Neuroscience, 4(9), pp.739–751.
-        w_e_back = 4 * 0.73 * g_l
+        # Nature Reviews Neuroscience, 4(9), pp.739–751. 
+        w_e_back = 4 * 0.73 * g_l  
         w_i_back = 2.85 * w_e_back
 
         p_back = 0.1
@@ -233,7 +217,7 @@ def model(name,
 
     # Learn?
     if stdp:
-        stdp_syn = """
+        stdp_syn =  """
         w_stdp : siemens
         dApre/dt = -Apre / tau_pre : siemens (event-driven)
         dApost/dt = -Apost / tau_post : siemens (event-driven)
@@ -248,18 +232,18 @@ def model(name,
         dpre_e *= w_e
         dpost_e *= w_e
 
-        C_stim_e = Synapses(P_stim,
-                            P_e,
-                            stdp_syn,
-                            on_pre="""
+        C_stim_e = Synapses(
+            P_stim, P_e, stdp_syn,
+            on_pre="""
             g_e += w_stdp
             Apre += dpre_e
             w_stdp = clip(w_stdp + dpost_e, 0, gmax_e)
             """,
-                            on_post="""
+            on_post="""
             Apost += dpost_e
             w_stdp = clip(w_stdp + dpre_e, 0, gmax_e)
-            """)
+            """
+        )
         C_stim_e.connect(True, p=p_e)
         C_stim_e.w_stdp = 'w_e + (randn() * 0.1 * w_e)'
 
@@ -270,24 +254,26 @@ def model(name,
         dpre_ee *= w_ee
         dpost_ee *= w_ee
 
-        C_ee = Synapses(P_e,
-                        P_e,
-                        stdp_syn,
-                        on_pre="""
+        C_ee = Synapses(
+            P_e, P_e, stdp_syn,
+            on_pre="""
             g_ee += w_stdp
             Apre += dpre_ee
             w_stdp = clip(w_stdp + dpost_ee, 0, gmax_ee)
             """,
-                        on_post="""
+            on_post="""
             Apost += dpost_ee
             w_stdp = clip(w_stdp + dpre_ee, 0, gmax_ee)
-            """)
+            """
+        )
         C_ee.connect(True, p=p_e)
         C_ee.w_stdp = 'w_ee + (randn() * 0.1 * w_ee)'
 
     # --
-    # Create network
-    net = Network(P_e, P_i, P_stim, C_ee, C_ii, C_ie, C_ei, C_stim_e)
+    # Create network 
+    net = Network(
+        P_e, P_i, P_stim, C_ee, C_ii, C_ie, C_ei, C_stim_e
+    )
     if balanced:
         net.add([P_e_back, P_i_back, C_back_e, C_back_i])
 
@@ -298,12 +284,15 @@ def model(name,
     pop_stim = PopulationRateMonitor(P_stim)
     pop_e = PopulationRateMonitor(P_e)
     pop_i = PopulationRateMonitor(P_i)
-    traces_e = StateMonitor(P_e, ('V', 'g_e', 'g_i', 'g_s', 'g_ee'),
+    traces_e = StateMonitor(P_e, 
+                            ('V', 'g_e', 'g_i', 'g_s', 'g_ee'),
                             record=True)
-    traces_i = StateMonitor(P_i, ('V', 'g_e', 'g_i'), record=True)
+    traces_i = StateMonitor(P_i, 
+                            ('V', 'g_e', 'g_i'),
+                            record=True)
 
-    monitors = [spikes_i, spikes_e, spikes_stim, pop_stim, pop_e, pop_i,
-                traces_e, traces_i]
+    monitors = [spikes_i, spikes_e, spikes_stim,
+                pop_stim, pop_e, pop_i, traces_e, traces_i]
 
     if stdp:
         weights_ee = StateMonitor(C_ee, 'w_stdp', record=True)
@@ -333,21 +322,20 @@ def model(name,
     connected_ie = (C_ie.i_, C_ie.j_)
     connected_ei = (C_ei.i_, C_ei.j_)
     connected_ii = (C_ii.i_, C_ii.j_)
-
+    
     # Useful for assesing background state
     Mge = traces_e.g_e[:].mean()
     Mgi = traces_e.g_i[:].mean()
-    Vm_hat = float((
-        (g_l * V_l) + (Mge * V_e) + (Mgi * V_i)) / (g_l + Mge + Mgi))
+    Vm_hat = float(((g_l * V_l) + (Mge * V_e) + (Mgi * V_i)) / (g_l + Mge + Mgi))
 
     Vm = np.mean(traces_e.V_[:])
     Vm_std = np.std(traces_e.V_[:])
 
     result = {
         'N_stim': N_stim,
-        'Vm_hat': Vm_hat,
-        'Vm': Vm,
-        'Vm_std': Vm_std,
+        'Vm_hat' : Vm_hat,
+        'Vm' : Vm,
+        'Vm_std' : Vm_std,
         'time': time / second,
         'dt': time_step / second,
         'spikes_i': spikes_i,
@@ -367,33 +355,34 @@ def model(name,
         'connected_ii': connected_ii,
         'connected_ee': connected_ee
     }
-
+    
     if save:
         save_result(name, result)
 
         # Save params
         params = {
-            'N_e': N_e,
-            'N_i': N_i,
-            'I_e': float(I_e),
-            'I_i': float(I_i),
-            'delay': float(delay),
-            'p_ei': float(p_ei),
-            'p_ie': float(p_ie),
-            'p_e': float(p_e),
-            'p_ii': float(p_ii),
-            'w_e': float(w_e),
-            'w_i': float(w_i),
-            'w_ei': float(w_ei),
-            'w_ie': float(w_ie),
-            'w_ee': float(w_ee),
-            'w_ii': float(w_ii),
-            'w_m': float(w_m),
-            'time': float(time),
-            'dt': float(time_step)
+            'N_e' : N_e,
+            'N_i' : N_i,
+            'I_e' : float(I_e),
+            'I_i' : float(I_i),
+            'delay' : float(delay),
+            'p_ei' : float(p_ei),
+            'p_ie' : float(p_ie),
+            'p_e' : float(p_e),
+            'p_ii' : float(p_ii),
+            'w_e' : float(w_e),
+            'w_i' : float(w_i),
+            'w_ei' : float(w_ei),
+            'w_ie' : float(w_ie),
+            'w_ee' : float(w_ee),
+            'w_ii' : float(w_ii),
+            'w_m' : float(w_m),
+            'time' : float(time),
+            'dt' : float(time_step)
         }
         with open(name + '_params.csv', 'w') as f:
-            [f.write('{0},{1:.5e}\n'.format(k, v)) for k, v in params.items()]
+            [f.write('{0},{1:.5e}\n'.format(k, v))
+             for k, v in params.items()]
 
     if analysis:
         analyze_result(name, result, fs=1 / result['dt'], save=True)
@@ -428,11 +417,11 @@ def min_syn(connected_i, connected_j, n_syn):
 
     ns_i = np.unique(sel_i)
     ns_j = np.unique(sel_j)
-
+    
     return ns_i, ns_j
 
-
-def save_result(name, result, fs=10000):
+                                 
+def save_result(name, result, fs=100000):
     time = result['time']
 
     spikes_e = result['spikes_e']
@@ -466,53 +455,43 @@ def save_result(name, result, fs=10000):
     # --
     # Spikes
     np.savetxt(name + '_spiketimes_e.csv',
-               np.vstack([spikes_e.i,
-                          spikes_e.t, ]).transpose(),
+               np.vstack([spikes_e.i, spikes_e.t, ]).transpose(),
                fmt='%i, %.5f')
     np.savetxt(name + '_spiketimes_i.csv',
-               np.vstack([spikes_i.i,
-                          spikes_i.t, ]).transpose(),
+               np.vstack([spikes_i.i, spikes_i.t, ]).transpose(),
                fmt='%i, %.5f')
     np.savetxt(name + '_spiketimes_stim.csv',
-               np.vstack([spikes_stim.i,
-                          spikes_stim.t, ]).transpose(),
+               np.vstack([spikes_stim.i, spikes_stim.t, ]).transpose(),
                fmt='%i, %.5f')
 
     # Example trace
     np.savetxt(name + '_exampletrace_e.csv',
-               np.vstack([traces_e.t,
-                          traces_e.V[0], ]).transpose(),
+               np.vstack([traces_e.t, traces_e.V[0], ]).transpose(),
                fmt='%.5f, %.4f')
     np.savetxt(name + '_exampletrace_i.csv',
-               np.vstack([traces_i.t,
-                          traces_i.V[0], ]).transpose(),
+               np.vstack([traces_i.t, traces_i.V[0], ]).transpose(),
                fmt='%.5f, %.4f')
 
     # Pop rate
     np.savetxt(name + '_poprates_e.csv',
-               np.vstack([pop_e.t,
-                          pop_e.rate / Hz, ]).transpose(),
+               np.vstack([pop_e.t, pop_e.rate / Hz, ]).transpose(),
                fmt='%.5f, %.1f')
     np.savetxt(name + '_poprates_i.csv',
-               np.vstack([pop_i.t,
-                          pop_i.rate / Hz, ]).transpose(),
+               np.vstack([pop_i.t, pop_i.rate / Hz, ]).transpose(),
                fmt='%.5f, %.1f')
 
     # Save first and last weights
     if weights_e is not None:
         np.savetxt(name + '_w_e.csv',
-                   np.vstack(
-                       [weights_e.w_stdp_[:, 0],
-                        weights_e.w_stdp_[:, weights_e.w_stdp_.shape[1] - 1]]),
+                   np.vstack([weights_e.w_stdp_[:, 0],
+                              weights_e.w_stdp_[:, weights_e.w_stdp_.shape[1] - 1]]),
                    fmt='%.8f')
 
     if weights_ee is not None:
-        np.savetxt(
-            name + '_w_ee.csv',
-            np.vstack(
-                [weights_ee.w_stdp_[:, 0],
-                 weights_ee.w_stdp_[:, weights_ee.w_stdp_.shape[1] - 1]]),
-            fmt='%.8f')
+        np.savetxt(name + '_w_ee.csv',
+                   np.vstack([weights_ee.w_stdp_[:, 0],
+                              weights_ee.w_stdp_[:, weights_ee.w_stdp_.shape[1] - 1]]),
+                   fmt='%.8f')
 
     # and neuron indices for weight can become a (i, j) matrix
     np.savetxt(name + '_i_e.csv', i_e, fmt='%i')
@@ -527,31 +506,29 @@ def save_result(name, result, fs=10000):
     np.savetxt(name + '_j_ie.csv', j_ie, fmt='%i')
     np.savetxt(name + '_i_ii.csv', i_ii, fmt='%i')
     np.savetxt(name + '_j_ii.csv', j_ii, fmt='%i')
-
+    
     # LFP
-    lfp = (np.abs(traces_e.g_e.sum(0)) + np.abs(traces_e.g_i.sum(0)) +
+    lfp = (np.abs(traces_e.g_e.sum(0)) +
+           np.abs(traces_e.g_i.sum(0)) +
            np.abs(traces_e.g_ee.sum(0)))
     np.savetxt(name + '_lfp.csv', zscore(lfp), fmt='%.2f')
 
     # PSD
     lfp = lfp[:]  # Drop initial spike
     freqs, spec = create_psd(lfp, fs)
-    np.savetxt(name + '_psd.csv',
-               np.vstack([freqs, np.log10(spec)]).transpose(),
-               fmt='%.1f, %.3f')
+    np.savetxt(name + '_psd.csv', np.vstack(
+        [freqs, np.log10(spec)]).transpose(), fmt='%.1f, %.3f')
 
     # STA
     sta_e, bins_sta_e = futil.spike_triggered_average(
         ts_e, ns_e, v_e, (0, time), 10e-3, 1 / 1e-5)
-    np.savetxt(name + '_sta_e.csv',
-               np.vstack([sta_e, bins_sta_e]).transpose(),
-               fmt='%.5f, %.5f')
+    np.savetxt(name + '_sta_e.csv', np.vstack(
+        [sta_e, bins_sta_e]).transpose(), fmt='%.5f, %.5f')
 
     sta_i, bins_sta_i = futil.spike_triggered_average(
         ts_i, ns_i, v_i, (0, time), 10e-3, 1 / 1e-5)
-    np.savetxt(name + '_sta_i.csv',
-               np.vstack([sta_i, bins_sta_i]).transpose(),
-               fmt='%.5f, %.5f')
+    np.savetxt(name + '_sta_i.csv', np.vstack(
+        [sta_i, bins_sta_i]).transpose(), fmt='%.5f, %.5f')
 
 
 def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
@@ -609,11 +586,9 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     analysis['rate_i'] = ts_i.size / time
 
     # kappa
-    r_e = futil.kappa(ns_e, ts_e, ns_e, ts_e,
-                      (0, time), 1.0 / 1000)  # 1 ms bins
+    r_e = futil.kappa(ns_e, ts_e, ns_e, ts_e, (0, time), 1.0 / 1000)  # 1 ms bins
     analysis['kappa_e'] = r_e
-    r_i = futil.kappa(ns_i, ts_i, ns_i, ts_i,
-                      (0, time), 1.0 / 1000)  # 1 ms bins
+    r_i = futil.kappa(ns_i, ts_i, ns_i, ts_i, (0, time), 1.0 / 1000)  # 1 ms bins
     analysis['kappa_i'] = r_i
 
     # fano
@@ -642,15 +617,13 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     ra_e, _, _ = futil.rate_code(ts_e, (0, time), 20e-3)
     ra_stim, _, _ = futil.rate_code(ts_stim, (0, time), 20e-3)
     analysis['lev_fine_rate_e'] = futil.levenshtein(ra_stim, ra_e)
-    analysis['lev_fine_rate_e_n'] = futil.levenshtein(ra_stim,
-                                                      ra_e) / len(ra_stim)
+    analysis['lev_fine_rate_e_n'] = futil.levenshtein(ra_stim, ra_e) / len(ra_stim)
     analysis['kl_fine_rate_e'] = futil.kl_divergence(ra_stim, ra_e)
 
     ra_e, _, _ = futil.rate_code(ts_e, (0, time), 50e-3)
     ra_stim, _, _ = futil.rate_code(ts_stim, (0, time), 50e-3)
     analysis['lev_course_rate_e'] = futil.levenshtein(ra_stim, ra_e)
-    analysis['lev_course_rate_e_n'] = futil.levenshtein(ra_stim,
-                                                        ra_e) / len(ra_stim)
+    analysis['lev_course_rate_e_n'] = futil.levenshtein(ra_stim, ra_e) / len(ra_stim)
     analysis['kl_course_rate_e'] = futil.kl_divergence(ra_stim, ra_e)
 
     # tol = 1e-2  # 10 ms
@@ -660,7 +633,8 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     # analysis['kl_cc_e'] = futil.kl_divergence(cc_stim, cc_e)
 
     # Gamma power
-    lfp = (np.abs(traces_e.g_e.sum(0)) + np.abs(traces_e.g_i.sum(0)) +
+    lfp = (np.abs(traces_e.g_e.sum(0)) +
+           np.abs(traces_e.g_i.sum(0)) +
            np.abs(traces_e.g_ee.sum(0)))
     fs, spec = futil.create_psd(lfp, 1 / result['dt'])
     m = np.logical_and(fs >= 20, fs <= 80)
@@ -668,12 +642,12 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     analysis['pow_std'] = np.std(spec[m])
 
     # STA distance
-    sta_e, _ = futil.spike_triggered_average(ts_e, ns_e, v_e, (0, time), 10e-3,
-                                             1 / 1e-5)
-    sta_i, _ = futil.spike_triggered_average(ts_i, ns_i, v_i, (0, time), 10e-3,
-                                             1 / 1e-5)
+    sta_e, _ = futil.spike_triggered_average(
+        ts_e, ns_e, v_e, (0, time), 10e-3, 1 / 1e-5)
+    sta_i, _ = futil.spike_triggered_average(
+        ts_i, ns_i, v_i, (0, time), 10e-3, 1 / 1e-5)
     analysis['sta_distance'] = cosined(sta_e, sta_i)
-    analysis['rmse'] = np.sqrt(np.mean((sta_e - sta_i)**2))
+    analysis['rmse'] = np.sqrt(np.mean((sta_e - sta_i) ** 2))
 
     # -------------------------------------------------------------------------
     # Only include neurons with at least 3 
@@ -722,15 +696,13 @@ def analyze_result(name, result, fs=100000, save=True, drop_before=0.1):
     ra_e, _, _ = futil.rate_code(ts_e, (0, time), 20e-3)
     ra_stim, _, _ = futil.rate_code(ts_stim, (0, time), 20e-3)
     analysis['lev_fine_rate_ms'] = futil.levenshtein(ra_stim, ra_e)
-    analysis['lev_fine_rate_ms_n'] = futil.levenshtein(ra_stim,
-                                                       ra_e) / len(ra_stim)
+    analysis['lev_fine_rate_ms_n'] = futil.levenshtein(ra_stim, ra_e) / len(ra_stim)
     analysis['kl_fine_rate_ms'] = futil.kl_divergence(ra_stim, ra_e)
 
     ra_e, _, _ = futil.rate_code(ts_e, (0, time), 50e-3)
     ra_stim, _, _ = futil.rate_code(ts_stim, (0, time), 50e-3)
     analysis['lev_course_rate_ms'] = futil.levenshtein(ra_stim, ra_e)
-    analysis['lev_course_rate_ms'] = futil.levenshtein(ra_stim,
-                                                       ra_e) / len(ra_stim)
+    analysis['lev_course_rate_ms'] = futil.levenshtein(ra_stim, ra_e) / len(ra_stim)
     analysis['kl_course_rate_ms'] = futil.kl_divergence(ra_stim, ra_e)
 
     if save:

@@ -1,7 +1,11 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""Usage: ei4.py PATH K 
+"""Usage: drive2.py PATH K 
     (--ing | --ping)
+    [--w_e=W_E]
+    [--w_i=W_I]
+    [--w_ee=W_EE]
+    [--w_ii=W_II]
+    [--w_ei=W_EI]
+    [--w_ie=W_IE]
     [--no_balanced]
     [--stim_seed=STIM_SEED]
     [--conn_seed=CONN_SEED]
@@ -9,20 +13,25 @@
     [--n_job=NJOB]
     [--restart_k=RK]
 
-Simulate K EI circuits, randomizing all weights.
+Simulate a EI circuit with HH neurons, searching the network connectivity space.
 
     Arguments:
-        PATH        path to save results 
+        PATH        path to the results files
         K           number of simulations to run
 
     Options:
         -h --help                   show this screen
         --ing                       run in ING mode
-        --ping                      run in PING mode
+        --ping                      run in PING mode                       
+        --w_e=W_E                   stim to E connection weight [default: 1.0]
+        --w_i=W_I                   stim to I connection weight [default: 2.0]
+        --w_ee=W_EE                 E to E connection weight [default: 1.0]
+        --w_ii=W_II                 I to I connection weight [default: 1.0]
+        --w_ei=W_EI                 E to I connection weight [default: 2.0]
+        --w_ie=W_IE                 I to E connection weight [default: 3.0]
         --no_balanced               turn off balanced background activity     
         --stim_seed=STIM_SEED       seed for creating the stimulus [default: 42]
-        --conn_seed=CONN_SEED       seed for creating connections 
-        --n_stim=NSTIM              number of driving neurons [default: 100]
+        --conn_seed=CONN_SEED       initial seed for connections [default: 13]
         --n_job=NJOB                number of parallel jobs [default: 10]
         --restart_k=RK              'restart' the stimulation at k
 
@@ -43,24 +52,19 @@ from joblib import Parallel, delayed
 if __name__ == "__main__":
     args = docopt(__doc__, version='1.0')
 
+    conn_seed = int(args['--conn_seed'])
+    stim_seed = int(args['--stim_seed'])
+    prng = np.random.RandomState(stim_seed)
+
     save_path = args['PATH']
-    
+
     # Start at 0, or restart?
     k0 = 0
     if args['--restart_k']:
         k0 = int(args['--restart_k'])
-    
+
     k = int(args['K'])
-    
-    n_stim = int(args['--n_stim'])
-
-    conn_seed = None
-    if args['--conn_seed']:
-        conn_seed = int(args['--conn_seed'])
-    
-    stim_seed = int(args['--stim_seed'])
-    prng = np.random.RandomState(stim_seed)
-
+ 
     balanced = True
     if args["--no_balanced"]:
         balanced = False
@@ -69,27 +73,29 @@ if __name__ == "__main__":
     # Params
     # -- Fixed
     # NOTE: expand CLI API to mod these, if needed in the future
-    I_e = 0.0
-    I_i = 0.0
+    w_e = float(args['--w_e'])  # TODO tune me
+    w_i = float(args['--w_i'])
+    w_ie = float(args['--w_ie'])
+    w_ei = float(args['--w_ei'])
+    w_ee = float(args['--w_ee'])
+    w_ii = float(args['--w_ii'])
+
+    I_e = 0
+    I_i = 0
     if args['--ing']:
         I_i = 0.8
 
     # -- Random
-    codes = range(k0, k)
-    w_es = prng.uniform(2, 8.0, k)[k0:k]  # Less than 3 means no spiking
-    w_is = w_es * prng.uniform(0, 0.9, k)[k0:k]
-    w_ees = prng.uniform(1.0, 16.0, k)[k0:k]
-    w_iis = prng.uniform(1.0, 16.0, k)[k0:k]
-    w_eis = prng.uniform(1.0, 16.0, k)[k0:k]
-    w_ies = prng.uniform(1.0, 16.0, k)[k0:k]
-    params = zip(codes, w_es, w_is, w_ees, w_iis, w_eis, w_ies)
-    
+    rates = prng.uniform(1, 5, k)[k0:k]
+    n_stims = prng.uniform(50, 300, k)[k0:k].astype(int)
+    codes = range(k)[k0:k]
+
     np.savez(os.path.join(save_path, "params"),
-            codes=codes, w_es=w_es, w_is=w_is, w_ies=w_ies, I_e=I_e,
-            w_ees=w_ees, w_iis=w_iis, w_eis=w_eis, I_i=I_i)
+            codes=codes, w_es=w_e, w_ies=w_ie, I_e=I_e,
+            w_i=w_i, w_ee=w_ee, w_ii=w_ii, w_ei=w_ei, I_i=I_i)
 
     # ------------------------------------------------------------
-    # Create input
+    # Init input (params are generated below)
     # Load v1 rate data (1 ms resoultion)
     dt = 1e-3
     v1 = np.load(os.path.join(sync.__path__[0], 'data', 'no_opto_rates.npz'))
@@ -118,17 +124,20 @@ if __name__ == "__main__":
     # Create Poisson firing, mocking up
     # the stimulus.
     time = stim_times.max()
-    nrns = neurons.Spikes(n_stim, time, dt=dt, seed=stim_seed)
 
-    z = 5  # rate multplier (very few neurons in this model)
-    spks_stim = nrns.poisson(z * stim)
+    def _params():
+        for code, rate, n_stim in zip(codes, rates, n_stims):
+            nrns = neurons.Spikes(n_stim, time, dt=dt, seed=stim_seed)
+            spks_stim = nrns.poisson(rate * stim)
+            ns, ts = util.to_spiketimes(nrns.times, spks_stim) 
 
-    ns, ts = util.to_spiketimes(nrns.times, spks_stim) 
+            # save input
+            np.savez(os.path.join(save_path, "{}_input".format(code)),
+                     rate=rate, code=code, n_stim=n_stim,
+                     time=time, stim=stim, ns=ns, ts=ts, 
+                     stim_seed=stim_seed)
 
-    # save input
-    np.savez(os.path.join(save_path, "input"), 
-            time=time, stim=stim, ns=ns, ts=ts, 
-            stim_seed=stim_seed)
+            yield code, n_stim, ns, ts
 
     # ------------------------------------------------------------
     # Run
@@ -139,6 +148,6 @@ if __name__ == "__main__":
             w_e, w_i, w_ei, w_ie, w_ee, w_ii,
             I_e=I_e, I_i=I_i,
             verbose=False, parallel=True, 
-            seed=stim_seed, conn_seed=conn_seed) 
-        for code, w_e, w_i, w_ee, w_ii, w_ei, w_ie in params
+            seed=stim_seed, conn_seed=conn_seed + code) 
+        for code, n_stim, ns, ts in _params()
     )

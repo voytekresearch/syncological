@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Usage: ei4.py PATH K 
+"""Usage: ei3.py PATH K 
     (--ing | --ping)
     [--no_balanced]
     [--stim_seed=STIM_SEED]
@@ -9,7 +9,7 @@
     [--n_job=NJOB]
     [--restart_k=RK]
 
-Simulate K EI circuits, randomizing all weights.
+Simulate K very sparse EI circuits, randomizing w_ie and w_e.
 
     Arguments:
         PATH        path to save results 
@@ -34,7 +34,7 @@ import os, sys
 import pudb
 
 import syncological as sync
-from syncological import ei2
+from syncological import ei3
 from fakespikes import neurons, util, rates
 from docopt import docopt
 from joblib import Parallel, delayed
@@ -69,6 +69,11 @@ if __name__ == "__main__":
     # Params
     # -- Fixed
     # NOTE: expand CLI API to mod these, if needed in the future
+    w_i = 1.0
+    w_ee = 1.0
+    w_ii = 1.0
+    w_ei = 2.0
+
     I_e = 0.0
     I_i = 0.0
     if args['--ing']:
@@ -76,17 +81,13 @@ if __name__ == "__main__":
 
     # -- Random
     codes = range(k0, k)
-    w_es = prng.uniform(2, 8.0, k)[k0:k]  # Less than 3 means no spiking
-    w_is = w_es * prng.uniform(0, 0.9, k)[k0:k]
-    w_ees = prng.uniform(1.0, 16.0, k)[k0:k]
-    w_iis = prng.uniform(1.0, 16.0, k)[k0:k]
-    w_eis = prng.uniform(1.0, 16.0, k)[k0:k]
+    w_es = prng.uniform(2, 16.0, k)[k0:k]
     w_ies = prng.uniform(1.0, 16.0, k)[k0:k]
-    params = zip(codes, w_es, w_is, w_ees, w_iis, w_eis, w_ies)
+    params = zip(codes, w_es, w_ies)
     
     np.savez(os.path.join(save_path, "params"),
-            codes=codes, w_es=w_es, w_is=w_is, w_ies=w_ies, I_e=I_e,
-            w_ees=w_ees, w_iis=w_iis, w_eis=w_eis, I_i=I_i)
+            codes=codes, w_es=w_es, w_ies=w_ies, I_e=I_e,
+            w_i=w_i, w_ee=w_ee, w_ii=w_ii, w_ei=w_ei, I_i=I_i)
 
     # ------------------------------------------------------------
     # Create input
@@ -133,12 +134,12 @@ if __name__ == "__main__":
     # ------------------------------------------------------------
     # Run
     Parallel(n_jobs=int(args['--n_job']), verbose=3)(
-        delayed(ei2.model)(
+        delayed(ei3.model)(
             os.path.join(save_path, str(code)), 
             time, n_stim, ts, ns, 
             w_e, w_i, w_ei, w_ie, w_ee, w_ii,
             I_e=I_e, I_i=I_i,
             verbose=False, parallel=True, 
             seed=stim_seed, conn_seed=conn_seed) 
-        for code, w_e, w_i, w_ee, w_ii, w_ei, w_ie in params
+        for code, w_e, w_ie in params
     )
