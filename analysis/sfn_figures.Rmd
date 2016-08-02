@@ -21,7 +21,8 @@ library(bspec)
 registerDoParallel(cores=10)
 
 source("loaders.R")
-path <- "/Users/type/Code/syncological/data"
+path <- "/home/ejp/src/syncological/data/"
+# path <- "/Users/type/Code/syncological/data"
 ```
 
 

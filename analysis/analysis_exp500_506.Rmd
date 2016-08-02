@@ -1,0 +1,431 @@
+---
+title: "Exp500-6"
+author: "Erik J Peterson"
+date: "June 13, 2016"
+output: html_document
+---
+
+```{r helper_fns, echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape)
+library(png)
+library(psd)
+library(tidyr)
+library(doParallel)
+library(bspec)
+library(cowplot)
+library(corrplot)
+registerDoParallel(cores=10)
+
+path <- "/home/ejp/src/syncological/data"
+```
+
+```{r}
+# exp_names <- c("exp500", "exp501", "exp502", "exp503", "exp504", "exp505", "exp506")
+exp_names <- c("exp502", "exp504", "exp500")
+# exp_names <- c("exp500", "exp501")
+# exp_names <- c("exp500", "exp503")
+# exp_names <- c("exp500", "exp506")
+```
+
+# Trials
+
+```{r}
+# Load trial analysis
+trial <- NULL
+for (exp_name in exp_names){
+  data_path <- paste(path, exp_name, "trials", sep="/")
+  tmp <- read.table(paste(data_path, "vis_trial_coding.csv", sep="/"), sep=",", header=FALSE)
+  tmp$name <- rep(exp_name, nrow(tmp))
+  trial <- rbind(trial, tmp)
+}
+colnames(trial) <- c("prec", "spike", "order", "rate", "name")
+trial <- select(trial, -spike, -rate)  # order is not useful for stim analysis
+
+```
+
+## Precision
+
+```{r, fig.width=4, fig.height=3}
+trial %>% 
+  ggplot(aes(x=prec, color=name)) +
+  geom_density(alpha=0.4) +
+  # facet_grid(name~.) +
+  xlab("Precision")  
+```
+
+```{r, fig.width=4, fig.height=3}
+trial %>% 
+  ggplot(aes(x=name, y=prec)) +
+  geom_boxplot(notch = TRUE) +
+  ylab("Precision")  
+```
+
+## Spike order
+
+```{r, fig.width=4, fig.height=3}
+trial %>% 
+  ggplot(aes(x=order, fill=name)) +
+  geom_density(alpha=0.4) +
+  facet_grid(name~.) +
+  xlab("Spike order")  
+```
+
+```{r, fig.width=4, fig.height=3}
+trial %>% 
+  ggplot(aes(x=name, y=order)) +
+  geom_boxplot(notch = TRUE) +
+  ylab("Spike order") 
+```
+
+```{r}
+rm(trial)
+```
+
+# Stim
+
+Analysis using the original stimulus as the reference.
+
+```{r load_stim, echo=FALSE, warning=FALSE, cache=FALSE}
+# Load trial analysis
+trial <- NULL
+for (exp_name in exp_names){
+  data_path <- paste(path, exp_name, "stim", sep="/")
+  tmp <- read.table(paste(data_path, "vis_trial_coding.csv", sep="/"), sep=",", header=FALSE)
+  tmp$name <- rep(exp_name, nrow(tmp))
+  trial <- rbind(trial, tmp)
+}
+colnames(trial) <- c("prec", "spike", "order", "rate", "name")
+trial <- select(trial, -order)  # order is not useful for stim analysis
+
+# Load trial+kl analysis
+kl <- NULL
+for (exp_name in exp_names){
+  data_path <- paste(path, exp_name, "stim", sep="/")
+  tmp <- read.table(paste(data_path, "vis_trial_kl.csv", sep="/"), sep=",", header=FALSE)
+  tmp$name <- rep(exp_name, nrow(tmp))
+  kl <- rbind(kl, tmp)
+}
+colnames(kl) <- c("spike", "order", "rate", "name")
+kl <- select(kl, -order)  # order is not useful for stim analysis
+
+# Low power analysis
+pow <- NULL
+for (exp_name in exp_names){
+  data_path <- paste(path, exp_name, "stim", sep="/")
+  tmp <- read.table(paste(data_path, "vis_pow.csv", sep="/"), sep=",", header=FALSE)
+  tmp$name <- rep(exp_name, nrow(tmp))
+  pow <- rbind(pow, tmp)
+}
+colnames(pow) <- c("trials", "amp", "prec", "spike", "order", "rate", "name")
+
+pow %>%
+  group_by(name, trials) %>% 
+  mutate(cycle = 1:length(trials)) -> pow
+
+pow <- select(pow, -order)  # order is not useful for stim analysis
+
+# Load rise analysis
+rise <- NULL
+for (exp_name in exp_names){
+  data_path <- paste(path, exp_name, "stim", sep="/")
+  tmp <- read.table(paste(data_path, "vis_rise.csv", sep="/"), sep=",", header=FALSE)
+  tmp$name <- rep(exp_name, nrow(tmp))
+  rise <- rbind(rise, tmp)
+}
+colnames(rise) <- c("trials", "prec", "spike", "order", "rate", "name")
+
+rise %>%
+  group_by(name, trials) %>% 
+  mutate(cycle = 1:length(trials)) -> rise
+
+rise <- select(rise, -order)  # order is not useful for stim analysis
+
+# Load fall analysis
+fall <- NULL
+for (exp_name in exp_names){
+  data_path <- paste(path, exp_name, "stim", sep="/")
+  tmp <- read.table(paste(data_path, "vis_fall.csv", sep="/"), sep=",", header=FALSE)
+  tmp$name <- rep(exp_name, nrow(tmp))
+  fall <- rbind(fall, tmp)
+}
+colnames(fall) <- c("trials", "prec", "spike", "order", "rate", "name")
+
+fall %>%
+  group_by(name, trials) %>% 
+  mutate(cycle = 1:length(trials)) -> fall
+
+fall <- select(fall, -order)  # order is not useful for stim analysis
+
+# Create phase
+rise$loc <- rep("rise", nrow(rise))
+fall$loc <- rep("fall", nrow(fall))
+phase <- rbind(rise, fall)
+
+# Get seperation data
+sep <- NULL
+for (exp_name in exp_names){
+  data_path <- paste(path, exp_name, "stim", sep="/")
+  tmp <- read.table(paste(data_path, "vis_frac.csv", sep="/"), sep=",", header=FALSE)
+  
+  k <- nrow(tmp) - 1
+  tmp <- data.frame(tmp[-1,])
+  tmp$name <- rep(exp_name, k)
+  
+  sep <- rbind(sep, tmp)
+}
+colnames(sep) <- c("frac", "name")
+
+# Cleanup
+rm(tmp, rise, fall, k)
+```
+
+## Seperation
+
+```{r, fig.width=4, fig.height=3}
+sep %>% 
+  ggplot(aes(x=name, y=frac)) +
+  geom_boxplot()
+```
+
+## Coding
+`
+### Spike
+
+```{r, fig.width=4, fig.height=3}
+trial %>% 
+  ggplot(aes(x=spike, fill=name)) +
+  geom_density(alpha=0.4) +
+  geom_histogram(binwidth = 0.1, alpha=0.9) +
+  # facet_grid(name~.) +
+  geom_vline(xintercept = 1, color="black", alpha=".5", linetype=2) +
+  xlab("Spike fidelity")  
+```
+
+- Zoom around x = 1
+
+```{r, fig.width=4, fig.height=3}
+trial %>% 
+  ggplot(aes(x=spike, fill=name)) +
+  geom_density(alpha=0.4) +
+  geom_histogram(binwidth = 0.01, alpha=0.9) +
+  xlim(0,2) +
+  geom_vline(xintercept = 1, color="black", alpha=".5", linetype=2) +
+  xlab("Spike fidelity")  
+```
+
+### Rate
+
+```{r, fig.width=4, fig.height=3}
+trial %>% 
+  ggplot(aes(x=rate, fill=name)) +
+  geom_density(alpha=0.4) +
+  geom_histogram(binwidth = 0.01, alpha=0.9) +
+  geom_vline(xintercept = 1, color="black", alpha=".5", linetype=2) +
+  xlab("Rate fidelity")  
+```
+
+- Zoom around x = 1
+
+```{r, fig.width=4, fig.height=3}
+trial %>% 
+  ggplot(aes(x=rate, fill=name)) +
+  geom_density(alpha=0.4) +
+  geom_histogram(binwidth = 0.01, alpha=0.9) +
+  xlim(0, 2) +
+  geom_vline(xintercept = 1, color="black", alpha=".5", linetype=2) +
+  xlab("Rate fidelity")  
+```
+
+## KL
+
+### Spike
+```{r, fig.width=4, fig.height=3}
+kl %>% 
+  ggplot(aes(x=spike, fill=name)) +
+  geom_density(alpha=0.4) +
+  geom_histogram(binwidth = 0.01, alpha=0.9) +
+  xlim(0, 2) +
+  xlab("Spike KL")  
+```
+
+### Rate
+
+```{r, fig.width=4, fig.height=3}
+kl %>% 
+  ggplot(aes(x=rate, fill=name)) +
+  geom_density(alpha=0.4) +
+  geom_histogram(binwidth = 0.01, alpha=0.9) +
+  xlim(0, 2) +
+  xlab("Rate KL")  
+```
+
+- Zoom
+
+```{r, fig.width=4, fig.height=3}
+kl %>% 
+  ggplot(aes(x=rate, fill=name)) +
+  geom_density(alpha=0.4) +
+  geom_histogram(binwidth = 0.01, alpha=0.9) +
+  xlim(0, .2) +
+  xlab("Rate KL")  
+```
+
+# Coding by gamma amplitude
+
+Gamma amplitude estimated on each cycle (30-100 Hz).
+
+
+## Spike
+
+```{r fig.width=10, fig.height=5, warning=FALSE}
+pow %>%
+  ggplot(aes(x=cycle, y=spike)) +
+  facet_grid(name~., scales = "free") +
+  geom_line(alpha=0.5) 
+```
+
+```{r fig.width=4, fig.height=10, warning=FALSE}
+pow %>%
+  ggplot(aes(x=amp, y=spike)) +
+  facet_grid(name~., scales = "free") +
+  geom_smooth(se=FALSE, color="red") +
+  geom_point(alpha=0.1)
+```
+
+- Zoom
+
+```{r fig.width=4, fig.height=10, warning=FALSE}
+pow %>% 
+  filter(spike < 2) %>%
+  ggplot(aes(x=amp, y=spike)) +
+  facet_grid(name~., scales = "free") +
+  geom_smooth(se=FALSE, color="red") +
+  geom_point(alpha=0.1) +
+  ylim(0, 2)
+```
+
+## Rate
+
+```{r fig.width=10, fig.height=4, warning=FALSE}
+pow %>%
+  ggplot(aes(x=cycle, y=rate)) +
+  facet_grid(name~., scales = "free") +
+  geom_line(alpha=0.5) 
+```
+
+```{r fig.width=10, fig.height=4, warning=FALSE}
+pow %>% 
+  ggplot(aes(x=amp, y=rate)) +
+  facet_grid(.~name, scales = "free") +
+  geom_smooth(se=FALSE, color="red") +
+  geom_point(alpha=0.1)
+```
+
+- Zoom, and join plots
+
+```{r fig.width=10, fig.height=4, warning=FALSE}
+pow %>% 
+  filter(rate < 2) %>%
+  ggplot(aes(x=amp, y=rate)) +
+  facet_grid(.~name, scales = "free") +
+  geom_smooth(se=FALSE, color="red") +
+  geom_point(alpha=0.1) +
+  ylim(0, 2)
+```
+
+## Correlations between metrics
+
+```{r, warning=FALSE}
+for (exp_name in exp_names){
+  print(paste(">>> EXP: ", exp_name, sep=""))
+  tmp <- filter(pow, name == exp_name)
+  print(cor.test(tmp$amp, tmp$prec, method = "spearman"))
+  print(cor.test(tmp$amp, tmp$spike, method = "spearman"))
+  print(cor.test(tmp$amp, tmp$rate, method = "spearman"))
+  rm(tmp)
+}
+```
+
+# Coding by gamma phase
+
+## Precision
+
+```{r fig.width=10, fig.height=4, warning=FALSE}
+phase %>%
+  ggplot(aes(x=cycle, y=prec, color=loc)) +
+  facet_grid(name~., scales = "free") +
+  geom_line(alpha=0.5) 
+```
+
+```{r fig.width=10, fig.height=4, warning=FALSE}
+phase %>% 
+  ggplot(aes(x=prec, fill=loc)) +
+  geom_density(alpha=0.4) +
+  facet_grid(.~name)
+```
+
+## Spike
+
+```{r fig.width=10, fig.height=4, warning=FALSE}
+phase %>%
+  ggplot(aes(x=cycle, y=spike, color=loc)) +
+  facet_grid(name~., scales = "free") +
+  geom_line(alpha=0.5) 
+```
+
+
+```{r fig.width=10, fig.height=4, warning=FALSE}
+phase %>% 
+  ggplot(aes(x=spike, fill=loc)) +
+  geom_density(alpha=0.4) +
+  geom_vline(xintercept = 1, color="black", alpha=".5", linetype=2) +
+  # geom_histogram(binwidth = 0.5, alpha=0.9) +
+  facet_grid(.~name)
+```
+ 
+- Zoom
+
+```{r fig.width=10, fig.height=4, warning=FALSE}
+phase %>% 
+  ggplot(aes(x=spike, fill=loc)) +
+  geom_density(alpha=0.4) +
+  geom_vline(xintercept = 1, color="black", alpha=".5", linetype=2) +
+  # geom_histogram(binwidth = 0.1, alpha=0.9) +
+  facet_grid(. ~ name) +
+  xlim(0,2)
+```
+
+
+## Rate
+
+```{r fig.width=10, fig.height=4, warning=FALSE}
+phase %>%
+  ggplot(aes(x=cycle, y=rate, color=loc)) +
+  facet_grid(name~., scales = "free") +
+  geom_line(alpha=0.5) 
+```
+
+
+```{r fig.width=10, fig.height=4, warning=FALSE}
+phase %>% 
+  ggplot(aes(x=rate, fill=loc)) +
+  facet_grid(. ~ name) +
+  geom_vline(xintercept = 1, color="black", alpha=".5", linetype=2) +
+  # geom_histogram(binwidth = 0.1, alpha=0.9) +
+  geom_density()
+```
+
+```{r fig.width=10, fig.height=4, warning=FALSE}
+phase %>% 
+  ggplot(aes(x=rate, fill=loc)) +
+  geom_density(alpha=0.4) +
+  geom_vline(xintercept = 1, color="black", alpha=".5", linetype=2) +
+  # geom_histogram(binwidth = 0.1, alpha=0.9) +
+  facet_grid(. ~ name) +
+  xlim(0, 2)
+```

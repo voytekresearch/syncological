@@ -1,0 +1,187 @@
+---
+title: "Exp 18-21 ing"
+author: "Erik J Peterson"
+date: "January 26, 2016"
+output: html_document
+---
+
+```{r helper_fns, echo=FALSE, fig.width=6, fig.height=4, echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape)
+library(png)
+library(psd)
+library(tidyr)
+library(doParallel)
+library(bspec)
+registerDoParallel(cores=10)
+
+source("loaders.R")
+# path <- "/Users/type/Code/syncological/data/"
+path <- "/home/ejp/src/syncological/data"
+```
+
+
+```{r load_exp18, echo=FALSE, warning=FALSE, message=FALSE}
+# -----------------------------------------------------------------------
+# Stats
+# --
+# ing
+js <- 1:3
+trials <- 0:19
+
+I_es <- c("0.0", "0.05", "0.1") # exp18
+tmppath <- paste(path, "/ing_exp18/", sep="")
+
+exp18 <- NULL
+for(I_e in I_es) {
+  for (trial in trials) {
+    for (j in js) {
+      #I_e-0.1_3_stdp_trial-19_analysis.csv
+      name <- paste("I_e-", as.character(I_e),
+                    "_", as.character(j),
+                    "_stdp_trial-",
+                    as.character(trial),
+                    "_analysis.csv", sep="")
+      dat <- read.csv(paste(tmppath, name, sep=""), header=FALSE)
+      
+      colnames(dat) <- c("stat", "x")
+      dat["I_e"] <- rep(I_e, nrow(dat))
+      dat["rate"] <- rep("30", nrow(dat))
+      dat["w_ei"] <- rep("0.4", nrow(dat))
+      dat["w_ie"] <- rep("1.2", nrow(dat))
+      dat["j"] <- rep(j, nrow(dat))
+      dat["trial"] <- rep(trial, nrow(dat))
+      
+      exp18 <- rbind(exp18, dat)
+    }
+  }
+}
+rm(dat, I_e, j, name, trial, tmppath)
+
+# plot
+p1a <- ggplot(data=filter(exp18, stat=="isi_e"), aes(x=trial, y=x, color=I_e)) + geom_point() + xlab("trials") + ylab("ISI synchrony") + theme_classic() + xlim(0,20) + ylim(0.5, 1.0)
+
+p1b <- ggplot(data=filter(exp18, stat=="lev_e"), aes(x=trial, y=x, color=I_e)) + geom_point() + xlab("trials") + ylab("Code fidelity") + theme_classic() + xlim(0,20) # + ylim(500, 3500)
+
+grid.arrange(p1a, p1b)
+```
+
+
+# Exp 19
+
+`w_ie` range
+
+```{r load_exp19, echo=FALSE, warning=FALSE, message=FALSE}
+# -----------------------------------------------------------------------
+# Stats
+# --
+# ing
+js <- 1:3
+trials <- 0:19
+
+w_ies <- c("1.0", "1.5", "2.0")
+
+tmppath <- paste(path, "/ing_exp19/", sep="")
+
+exp19 <- NULL
+for(w_ie in w_ies) {
+  for (trial in trials) {
+    for (j in js) {
+#       w_ie-2.0_3_stdp_trial-9_analysis.csv
+      name <- paste("w_ie-", as.character(w_ie),
+                    "_", as.character(j),
+                    "_stdp_trial-",
+                    as.character(trial),
+                    "_analysis.csv", sep="")
+      dat <- read.csv(paste(tmppath, name, sep=""), header=FALSE)
+      
+      colnames(dat) <- c("stat", "x")
+      dat["I_e"] <- rep("0.1", nrow(dat))
+      dat["rate"] <- rep("30", nrow(dat))
+      dat["w_ei"] <- rep("0.4", nrow(dat))
+      dat["w_ie"] <- rep(w_ie, nrow(dat))
+      dat["j"] <- rep(j, nrow(dat))
+      dat["trial"] <- rep(trial, nrow(dat))
+      
+      exp19 <- rbind(exp19, dat)
+    }
+  }
+}
+rm(dat, w_ie, j, name, trial, tmppath)
+
+# plot
+p2a <- ggplot(data=filter(exp19, stat=="isi_e"), aes(x=trial, y=x, color=w_ie)) + geom_point() + xlab("trials") + ylab("ISI synchrony") + theme_classic() + xlim(0,20) + ylim(0.5, 1.0)
+
+p2b <- ggplot(data=filter(exp19, stat=="lev_e"), aes(x=trial, y=x, color=w_ie)) + geom_point() + xlab("trials") + ylab("Code fidelity") + theme_classic() + xlim(0,20) # + ylim(500, 3500)
+
+grid.arrange(p2a, p2b)
+```
+
+
+# Exp 17
+
+```{r load_exp21, echo=FALSE, warning=FALSE, message=FALSE}
+# -----------------------------------------------------------------------
+# Stats
+# --
+# ing
+js <- 1:3
+trials <- 0:19
+
+rates <- c("10", "20", "30")
+
+tmppath <- paste(path, "/ing_exp21/", sep="")
+
+exp21 <- NULL
+for(rate in rates) {
+  for (trial in trials) {
+    for (j in js) {
+#       w_ie-2.0_3_stdp_trial-9_analysis.csv
+      name <- paste("rate-", as.character(rate),
+                    "_", as.character(j),
+                    "_stdp_trial-",
+                    as.character(trial),
+                    "_analysis.csv", sep="")
+      dat <- read.csv(paste(tmppath, name, sep=""), header=FALSE)
+      
+      colnames(dat) <- c("stat", "x")
+      dat["I_e"] <- rep("0.1", nrow(dat))
+      dat["rate"] <- rep(rate, nrow(dat))
+      dat["w_ei"] <- rep("0.3", nrow(dat))
+      dat["w_ie"] <- rep("1.2", nrow(dat))
+      dat["j"] <- rep(j, nrow(dat))
+      dat["trial"] <- rep(trial, nrow(dat))
+      
+      exp21 <- rbind(exp21, dat)
+    }
+  }
+}
+rm(dat, rate, j, name, trial, tmppath)
+
+# --
+# Plot
+p3a <- ggplot(data=filter(exp21, stat=="isi_e"), aes(x=trial, y=x, color=rate)) + geom_point() + xlab("trials") + ylab("ISI synchrony") + theme_classic() + xlim(0,20) + ylim(0.5, 1.0)
+
+p3b <- ggplot(data=filter(exp21, stat=="lev_e"), aes(x=trial, y=x, color=rate)) + geom_point() + xlab("trials") + ylab("Code fidelity") + theme_classic() + xlim(0,20) # + ylim(500, 3500)
+
+grid.arrange(p3a, p3b)
+```
+
+
+
+# Exp18 and 19 and 21
+
+```{r}
+pdf("figures/exp19-21_ing.pdf", width = 8.5, height = 4.5)
+laym <- rbind(
+  c(1, 2, 3),
+  c(4, 5, 6)  
+)
+grid.arrange(p1a, p2a, p3a, p1b, p2b, p3b, layout_matrix=laym)
+dev.off()
+
+```
