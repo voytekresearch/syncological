@@ -571,14 +571,31 @@ grid.arrange(p.ping1.power.e, p.ping1.isi.e, p.ping1.lev.e, layout_matrix=laym)
 
 ```{r ping1_examples}
 ping1.poprate.e %>% 
-  filter(w_ie %in% c("0.1", "0.3", "0.60", "0.9")) %>% 
+  filter(w_ie %in% c("0.1", "0.9")) %>% 
   filter(w_ei == "1.0") %>% 
   ggplot(aes(x=sample_time, y=poprate)) +
   geom_line() +
   ylab("Avg. pop. rate (Hz)") +
+  xlab("") +
+  theme_classic() +
+  theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+  facet_grid(w_ie~.) -> p.ping1.poprate.e
+
+ping2.poprate.e %>% 
+  filter(I_e %in% c("0.3", "0.60", "0.8", "1.0")) %>% 
+  filter(sample_time > 0.05) %>% 
+  ggplot(aes(x=sample_time, y=poprate)) +
+  geom_line() +
+  ylab("") +
   xlab("Time (s)") +
   theme_classic() +
-  facet_grid(w_ie~.)
+  theme(strip.background = element_blank(), strip.text.y = element_text(angle = 0)) +
+  facet_grid(I_e~.) -> p.ping2.poprate.e
+
+laym = t(rbind(
+  c(1, 1, 2, 2, 2)
+))
+grid.arrange(p.ping1.poprate.e, p.ping2.poprate.e, layout_matrix=laym)
 ```
 
 ```{r ping1_ei}
