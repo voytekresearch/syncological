@@ -1,0 +1,187 @@
+---
+title: "Exp 14-17 ping"
+author: "Erik J Peterson"
+date: "January 15, 2016"
+output: html_document
+---
+
+```{r helper_fns, echo=FALSE, fig.width=6, fig.height=4, echo=FALSE, warnping=FALSE, message=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape)
+library(png)
+library(psd)
+library(tidyr)
+library(doParallel)
+library(bspec)
+registerDoParallel(cores=10)
+
+source("loaders.R")
+# path <- "/Users/type/Code/syncological/data/"
+path <- "/home/ejp/src/syncological/data"
+```
+
+
+```{r load_exp14, echo=FALSE, warnping=FALSE, message=FALSE}
+# -----------------------------------------------------------------------
+# Stats
+# --
+# ping
+js <- 1:3
+trials <- 0:19
+
+I_es <- c("0.0", "0.05", "0.1") # exp14
+tmppath <- paste(path, "/ping_exp14/", sep="")
+
+exp14 <- NULL
+for(I_e in I_es) {
+  for (trial in trials) {
+    for (j in js) {
+      #I_e-0.1_3_stdp_trial-19_analysis.csv
+      name <- paste("I_e-", as.character(I_e),
+                    "_", as.character(j),
+                    "_stdp_trial-",
+                    as.character(trial),
+                    "_analysis.csv", sep="")
+      dat <- read.csv(paste(tmppath, name, sep=""), header=FALSE)
+      
+      colnames(dat) <- c("stat", "x")
+      dat["I_e"] <- rep(I_e, nrow(dat))
+      dat["rate"] <- rep("30", nrow(dat))
+      dat["w_ei"] <- rep("0.4", nrow(dat))
+      dat["w_ie"] <- rep("1.2", nrow(dat))
+      dat["j"] <- rep(j, nrow(dat))
+      dat["trial"] <- rep(trial, nrow(dat))
+      
+      exp14 <- rbind(exp14, dat)
+    }
+  }
+}
+rm(dat, I_e, j, name, trial, tmppath)
+
+# plot
+p1a <- ggplot(data=filter(exp14, stat=="isi_e"), aes(x=trial, y=x, color=I_e)) + geom_point() + xlab("trials") + ylab("ISI synchrony") + theme_classic() + xlim(0,20) + ylim(0.5, 1.0)
+
+p1b <- ggplot(data=filter(exp14, stat=="lev_e"), aes(x=trial, y=x, color=I_e)) + geom_point() + xlab("trials") + ylab("Code fidelity") + theme_classic() + xlim(0,20) + ylim(500, 3500)
+
+grid.arrange(p1a, p1b)
+```
+
+
+# Exp 15
+
+`w_ie` range
+
+```{r load_exp15, echo=FALSE, warning=FALSE, message=FALSE}
+# -----------------------------------------------------------------------
+# Stats
+# --
+# ping
+js <- 1:3
+trials <- 0:19
+
+w_ies <- c("1.0", "1.5", "2.0")
+
+tmppath <- paste(path, "/ping_exp15/", sep="")
+
+exp15 <- NULL
+for(w_ie in w_ies) {
+  for (trial in trials) {
+    for (j in js) {
+#       w_ie-2.0_3_stdp_trial-9_analysis.csv
+      name <- paste("w_ie-", as.character(w_ie),
+                    "_", as.character(j),
+                    "_stdp_trial-",
+                    as.character(trial),
+                    "_analysis.csv", sep="")
+      dat <- read.csv(paste(tmppath, name, sep=""), header=FALSE)
+      
+      colnames(dat) <- c("stat", "x")
+      dat["I_e"] <- rep("0.1", nrow(dat))
+      dat["rate"] <- rep("30", nrow(dat))
+      dat["w_ei"] <- rep("0.4", nrow(dat))
+      dat["w_ie"] <- rep(w_ie, nrow(dat))
+      dat["j"] <- rep(j, nrow(dat))
+      dat["trial"] <- rep(trial, nrow(dat))
+      
+      exp15 <- rbind(exp15, dat)
+    }
+  }
+}
+rm(dat, w_ie, j, name, trial, tmppath)
+
+# plot
+p2a <- ggplot(data=filter(exp15, stat=="isi_e"), aes(x=trial, y=x, color=w_ie)) + geom_point() + xlab("trials") + ylab("ISI synchrony") + theme_classic() + xlim(0,20) + ylim(0.5, 1.0)
+
+p2b <- ggplot(data=filter(exp15, stat=="lev_e"), aes(x=trial, y=x, color=w_ie)) + geom_point() + xlab("trials") + ylab("Code fidelity") + theme_classic() + xlim(0,20) + ylim(500, 3500)
+
+grid.arrange(p2a, p2b)
+```
+
+
+# Exp 17
+
+```{r load_exp17, echo=FALSE, warning=FALSE, message=FALSE}
+# -----------------------------------------------------------------------
+# Stats
+# --
+# ping
+js <- 1:3
+trials <- 0:19
+
+rates <- c("5", "15", "30")
+
+tmppath <- paste(path, "/ping_exp17/", sep="")
+
+exp17 <- NULL
+for(rate in rates) {
+  for (trial in trials) {
+    for (j in js) {
+#       w_ie-2.0_3_stdp_trial-9_analysis.csv
+      name <- paste("rate-", as.character(rate),
+                    "_", as.character(j),
+                    "_stdp_trial-",
+                    as.character(trial),
+                    "_analysis.csv", sep="")
+      dat <- read.csv(paste(tmppath, name, sep=""), header=FALSE)
+      
+      colnames(dat) <- c("stat", "x")
+      dat["I_e"] <- rep("0.1", nrow(dat))
+      dat["rate"] <- rep(rate, nrow(dat))
+      dat["w_ei"] <- rep("0.3", nrow(dat))
+      dat["w_ie"] <- rep("1.2", nrow(dat))
+      dat["j"] <- rep(j, nrow(dat))
+      dat["trial"] <- rep(trial, nrow(dat))
+      
+      exp17 <- rbind(exp17, dat)
+    }
+  }
+}
+rm(dat, rate, j, name, trial, tmppath)
+
+# --
+# Plot
+p3a <- ggplot(data=filter(exp17, stat=="isi_e"), aes(x=trial, y=x, color=rate)) + geom_point() + xlab("trials") + ylab("ISI synchrony") + theme_classic() + xlim(0,20) + ylim(0.5, 1.0)
+
+p3b <- ggplot(data=filter(exp17, stat=="lev_e"), aes(x=trial, y=x, color=rate)) + geom_point() + xlab("trials") + ylab("Code fidelity") + theme_classic() + xlim(0,20) + ylim(500, 3500)
+
+grid.arrange(p3a, p3b)
+```
+
+
+
+# Exp14 and 15 and 17
+
+```{r}
+pdf("figures/exp15-17_ping.pdf", width = 8.5, height = 4.5)
+laym <- rbind(
+  c(1, 2, 3),
+  c(4, 5, 6)  
+)
+grid.arrange(p1a, p2a, p3a, p1b, p2b, p3b, layout_matrix=laym)
+dev.off()
+
+```

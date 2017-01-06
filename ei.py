@@ -17,7 +17,7 @@ import pyspike as spk
 def model(name, time, N_stim, ts_stim, idx_stim, period,
           w_e, w_i, w_ei, w_ie, w_ee, w_ii,
           I_e, I_i, I_i_sigma, I_e_sigma,
-          stdp, seed=None):
+          stdp, balanced=False, seed=None):
     """Model some BRAINS!"""
 
     np.random.seed(seed)
@@ -26,7 +26,7 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     if np.allclose(time, period):
         N_trials = 1
     elif np.allclose(time % period, 0):
-        N_trials = int(time / period) 
+        N_trials = int(time / period)
     else:
         raise ValueError("time must be an integer multiple of period")
 
@@ -46,9 +46,6 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     N_e = int(N * 0.8)
     N_i = int(N * 0.2)
 
-    r_e = 0 * Hz
-    r_i = r_e
-
     delay = 2 * ms
     p_ei = 0.1
     p_ie = 0.1
@@ -56,6 +53,8 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     p_ii = 0.6
 
     w_e = w_e / (p_e * N_e) * msiemens
+    # TODO add this to external input and make sure it is not bieng used elsewhere
+    # TODO also norm is like w_e is
     w_i = w_i * msiemens
     w_ei = w_ei / (p_ei * N_e) * msiemens
     w_ie = w_ie / (p_ie * N_i) * msiemens
@@ -151,10 +150,11 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     else:
         P_i.I = np.random.normal(I_i, I_i_sigma, N_i) * uamp
 
-    P_e_back = PoissonGroup(N_e, rates=r_e)
-    P_i_back = PoissonGroup(N_i, rates=r_i)
-    P_stim = SpikeGeneratorGroup(N_stim, idx_stim, ts_stim * second, 
-            period=period)
+    P_stim = SpikeGeneratorGroup(N_stim, idx_stim, ts_stim * second)
+
+    # Period is broken in RC1
+    # P_stim = SpikeGeneratorGroup(N_stim, idx_stim, ts_stim * second,
+    #                              period=period)
 
     # --
     # Syn
@@ -172,9 +172,24 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     C_ee.connect(True, p=p_e)
 
     # External
+    # TODO subset P_e so I can select subsets to target
     C_stim_e = Synapses(P_stim, P_e, pre='g_s += w_e')
     C_stim_e.connect(True, p=p_e)
 
+    if balanced:
+        P_e_back = PoissonGroup(8000, rates=10 * Hz)
+        P_i_back = PoissonGroup(2000, rates=10 * Hz)
+
+        p_back = 0.1
+        w_e_back = 1.0 / (8000 * p_back) * msiemens
+        w_i_back = 4.0 / (2000 * p_back) * msiemens
+
+        C_back_e = Synapses(P_e_back, P_e, pre='g_e += w_e_back')
+        C_back_e.connect(True, p=p_back)
+        C_back_i = Synapses(P_i_back, P_e, pre='g_i += w_i_back')
+        C_back_i.connect(True, p=p_back)
+
+    # Learn?
     if stdp:
         stdp_syn =  """
         w_stdp : siemens
@@ -184,15 +199,15 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
         tau_pre = 20 * ms
         tau_post = tau_pre
 
-        # SE 
+        # SE
         gmax_e = w_e * 10
         dpre_e = 0.005
         dpost_e = -dpre_e * tau_pre / tau_post * 1.05
         dpre_e *= w_e
         dpost_e *= w_e
-        
+
         C_stim_e = Synapses(
-            P_stim, P_e, stdp_syn, 
+            P_stim, P_e, stdp_syn,
             pre="""
             g_e += w_stdp
             Apre += dpre_e
@@ -203,18 +218,18 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
             w_stdp = clip(w_stdp + dpre_e, 0, gmax_e)
             """
         )
-        C_stim_e.connect(True, p=p_e) 
+        C_stim_e.connect(True, p=p_e)
         C_stim_e.w_stdp = 'w_e + (randn() * 0.1 * w_e)'
-        
-        # EE 
+
+        # EE
         gmax_ee = w_ee * 10
         dpre_ee = 0.005
         dpost_ee = -dpre_ee * tau_pre / tau_post * 1.05
         dpre_ee *= w_ee
         dpost_ee *= w_ee
-        
+
         C_ee = Synapses(
-            P_e, P_e, stdp_syn, 
+            P_e, P_e, stdp_syn,
             pre="""
             g_ee += w_stdp
             Apre += dpre_ee
@@ -235,9 +250,11 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
     # --
     # Create network and save
     net = Network(
-        P_e, P_i, P_e_back, P_i_back, P_stim, 
-        C_ee, C_ii, C_ie, C_ei, C_stim_e
+        P_e, P_i, P_stim, C_ee, C_ii, C_ie, C_ei, C_stim_e
     )
+    if balanced:
+        net.add([P_e_back, P_i_back, C_back_e, C_back_i])
+
     net.store('trials')
 
     # --
@@ -257,16 +274,22 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
         pop_stim = PopulationRateMonitor(P_stim)
         pop_e = PopulationRateMonitor(P_e)
         pop_i = PopulationRateMonitor(P_i)
-        weights_ee = StateMonitor(C_ee, 'w_stdp', record=True)
-        weights_e = StateMonitor(C_stim_e, 'w_stdp', record=True)
         traces_e = StateMonitor(P_e, ('V', 'g_e', 'g_i', 'g_s', 'g_ee'),
                                 record=True)
         traces_i = StateMonitor(P_i, ('V', 'g_e', 'g_i'),
-                                record=range(11, 31))
+                                record=True)
 
         monitors = [spikes_i, spikes_e, spikes_stim,
-                    pop_stim, pop_e, pop_i, traces_e, traces_i,
-                    weights_e, weights_ee]
+                    pop_stim, pop_e, pop_i, traces_e, traces_i]
+
+        if stdp:
+            weights_ee = StateMonitor(C_ee, 'w_stdp', record=True)
+            weights_e = StateMonitor(C_stim_e, 'w_stdp', record=True)
+            monitors += [weights_e, weights_ee]
+        else:
+            weights_ee = None
+            weights_e = None
+
         net.add(monitors)
         net.run(period, report='text')
 
@@ -283,11 +306,11 @@ def model(name, time, N_stim, ts_stim, idx_stim, period,
             'traces_e': traces_e,
             'traces_i': traces_i,
             'weights_e': weights_e,
-            'weights_ee' : weights_ee,
-            'connected_e' : connected_e,
-            'connected_ee' : connected_ee
+            'weights_ee': weights_ee,
+            'connected_e': connected_e,
+            'connected_ee': connected_ee
         }
- 
+
         trial_name = name + "_trial-" + str(k)
         save_result(trial_name, result)
         analyze_result(trial_name, result, fs=100000, save=True)
@@ -309,8 +332,8 @@ def save_result(name, result, fs=10000):
 
     weights_e = result['weights_e']
     weights_ee = result['weights_ee']
-    i_e, j_e = result['connected_e'] 
-    i_ee, j_ee = result['connected_ee'] 
+    i_e, j_e = result['connected_e']
+    i_ee, j_ee = result['connected_ee']
 
     # --
     # Save full
@@ -342,21 +365,24 @@ def save_result(name, result, fs=10000):
                fmt='%.5f, %.1f')
 
     # Save first and last weights
-    np.savetxt(name + '_w_e.csv', 
-            np.vstack([weights_e.w_stdp_[:, 0], 
-                weights_e.w_stdp_[:, weights_e.w_stdp_.shape[1] - 1]]),
-            fmt='%.8f')
-    np.savetxt(name + '_w_ee.csv', 
-            np.vstack([weights_ee.w_stdp_[:, 0], 
-                weights_ee.w_stdp_[:, weights_ee.w_stdp_.shape[1] - 1]]),
-            fmt='%.8f')
+    if weights_e is not None:
+        np.savetxt(name + '_w_e.csv',
+                   np.vstack([weights_e.w_stdp_[:, 0],
+                              weights_e.w_stdp_[:, weights_e.w_stdp_.shape[1] - 1]]),
+                   fmt='%.8f')
+        
+    if weights_ee is not None:
+        np.savetxt(name + '_w_ee.csv',
+                   np.vstack([weights_ee.w_stdp_[:, 0],
+                              weights_ee.w_stdp_[:, weights_ee.w_stdp_.shape[1] - 1]]),
+                   fmt='%.8f')
 
     # and neuron indices for weight can become a (i, j) matrix
     np.savetxt(name + '_i_e.csv', i_e, fmt='%i')
     np.savetxt(name + '_j_e.csv', j_e, fmt='%i')
     np.savetxt(name + '_i_ee.csv', i_ee, fmt='%i')
     np.savetxt(name + '_j_ee.csv', j_ee, fmt='%i')
-    
+
     # LFP
     lfp = (np.abs(traces_e.g_e.sum(0)) +
            np.abs(traces_e.g_i.sum(0)) +
@@ -389,7 +415,7 @@ def analyze_result(name, result, fs=100000, save=True):
     # ns_e, ts_e = ns_e[mask], ts_e[mask]
     # mask = ns_i < 200
     # ns_i, ts_i = ns_i[mask], ts_i[mask]
- 
+
     # kappa
     r_e = futil.kappa(ns_e, ts_e, ns_e, ts_e, (0, 1), 1.0 / 1000)  # 1 ms bins
     analysis['kappa_e'] = r_e
@@ -423,3 +449,4 @@ def analyze_result(name, result, fs=100000, save=True):
 
     # TODO SFC
     return analysis
+

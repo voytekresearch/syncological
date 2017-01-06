@@ -1,6 +1,37 @@
 import numpy as np
 
 
+def create_ij(p, Ni, Nj, prng=None):
+    """Create connection index between Ni and Nj, with probability p.
+
+    Params
+    ------
+    p : numeric
+        Connection probability
+    Ni : numeric
+        Number of Ni neurons
+    Nj : numeric
+        Number of Nj neurons
+    seed : int
+        Seed (int) for binomial distribution sampling
+    """
+    if prng is None:
+        prng = np.random.RandomState()
+    
+    Ni = int(Ni)
+    Nj = int(Nj)
+
+    conn_i = []
+    conn_j = []
+    for i in range(Ni):
+        for j in range(Nj):
+            if prng.binomial(1, p):
+                conn_i.append(i)
+                conn_j.append(j)
+
+    return conn_i, conn_j, prng
+
+    
 def thal_spikes(t, f, N, k, prng=None):
     """Create synchronous bursts (1 ms variance) of thalamic-ish spike
 
@@ -118,12 +149,41 @@ def gaussian_impulse(t, min_t, max_t, stdev, N, k, decimals=5, prng=None):
 
     # Drop identical times
     # Randomly assign neurons to times
-    idx = prng.random_integers(0, N, size=len(times))
+    idx = prng.random_integers(0, N-1, size=len(times))
 
     return times, idx
 
 
-def create_trials(n, offset, times, idx):
+def pad_rate(pad, rates, times, dt):
+    """Pad input.
+
+    Params
+    -----
+    pad : numeric
+        Pad time (seconds)
+    rates : 1d array-like
+        Firing rate
+    times : 1d array-like
+        Time index of rates
+    dt : numeric
+        Temporal resolution
+    """
+    n_steps = int(pad * (1.0 / dt))
+    pad_times = np.linspace(0, pad, n_steps - 1)
+        
+    times = np.concatenate([
+        pad_times, 
+        pad_times.max() + times
+    ])
+    rates = np.concatenate([
+        np.zeros(int(np.ceil(pad * (1 / dt))) - 1), 
+        rates
+    ])
+
+    return rates, times
+
+
+def create_trials(n, offset, ns, ts):
     """Create simulated trials
     
     Params
@@ -132,19 +192,19 @@ def create_trials(n, offset, times, idx):
         Number of trials
     offset : numeric
         Offset of each trial from previous
-    times : 1d array-like
+    ts : 1d array-like
         Spike times
-    idx : 1d array-like
+    ns : 1d array-like
         Neuron index
     """
     n = int(n)
-    times = np.asarray(times)
-    idx = np.asarray(idx)
+    ts = np.asarray(ts)
+    ns = np.asarray(ns)
 
-    trial_times, trial_idxs = [offset + times, ], [idx, ]
+    ts_trial, ns_trial = [offset + ts, ], [ns, ]
     for i in range(n - 1):
-        last_t = np.max(trial_times[-1])
-        trial_times.append(times + last_t + offset)
-        trial_idxs.append(idx)
+        last_t = np.max(ts_trial[-1])
+        ts_trial.append(ts + last_t + offset)
+        ns_trial.append(ns)
 
-    return np.concatenate(trial_times), np.concatenate(trial_idxs)
+    return np.concatenate(ns_trial), np.concatenate(ts_trial)

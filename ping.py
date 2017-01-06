@@ -66,7 +66,7 @@ def model(time, time_stim, rate_stim, w_e, w_i, w_ei, w_ie, w_ee, I_e, I_i,
     g_Na = 100 * msiemens
     g_K = 80 * msiemens
     g_l = 0.1 * msiemens
-
+    
     V_Na = 50 * mV
     V_K = -100 * mV
     V_l = -67 * mV

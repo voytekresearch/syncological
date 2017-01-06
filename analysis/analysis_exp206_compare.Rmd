@@ -1,0 +1,413 @@
+---
+title: "Exp206/7 gamma power and conding"
+author: "Erik J Peterson"
+date: "May 21, 2016"
+output: html_document
+---
+
+```{r helper_fns, warning=FALSE, message=FALSE, echo=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape)
+library(png)
+library(psd)
+library(tidyr)
+library(doParallel)
+library(bspec)
+library(cowplot)
+library(corrplot)
+registerDoParallel(cores=10)
+
+path <- "/home/ejp/src/syncological/data/"
+```
+
+```{r load, cache=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
+ping_path <- paste(path, "/exp206/", sep="/")
+iters <- 0:999
+
+params <- NULL
+for(i in iters){
+  tmp <- read.table(paste(ping_path, as.character(i), "_params.csv", sep=""), 
+                     sep=",", header=FALSE, stringsAsFactors=FALSE)
+  tmp$models <- rep(i, nrow(tmp))
+  params <- rbind(params, tmp)
+}
+params <- spread(params, V1, V2)
+
+intial_a <- NULL
+for(i in iters){
+  tmp <- read.table(paste(ping_path, as.character(i), "_analysis.csv", sep=""), 
+                     sep=",", header=FALSE, stringsAsFactors=FALSE)
+  tmp$models <- rep(i, nrow(tmp))
+  intial_a <- rbind(intial_a, tmp)
+}
+intial_a <- spread(intial_a, V1, V2)
+intial_a <- select(intial_a, kappa_e, fano_e, rate_e, pow_mean, models)
+
+ping00 <- inner_join(params, 
+                      read.table(paste(ping_path, "compare_00.csv", sep=""), 
+                      sep=",", header=TRUE, stringsAsFactors=FALSE), 
+                      by = "models"
+                    )
+ping00 <- inner_join(ping00, intial_a)
+ping00$pow_mean_n <- ping00$pow_mean / max(ping00$pow_mean)
+
+ping25 <- inner_join(params, 
+                      read.table(paste(ping_path, "compare_25.csv", sep=""), 
+                      sep=",", header=TRUE, stringsAsFactors=FALSE), 
+                      by = "models"
+                    )
+ping25 <- inner_join(ping25, intial_a)
+ping25$pow_mean_n <- ping25$pow_mean / max(ping25$pow_mean)
+ping25 <- filter(ping25, pow_mean_n >= 0.25)
+
+ping50 <- inner_join(params, 
+                      read.table(paste(ping_path, "compare_50.csv", sep=""), 
+                      sep=",", header=TRUE, stringsAsFactors=FALSE), 
+                      by = "models"
+                    )
+ping50 <- inner_join(ping50, intial_a)
+ping50$pow_mean_n <- ping50$pow_mean / max(ping50$pow_mean)
+ping50 <- filter(ping50, pow_mean_n >= 0.50)
+
+rm(tmp, i, params, intial_a)
+```
+
+# Ping00
+
+## Levenstien d.
+
+```{r lev00, fig.height=8, fig.width=8, echo=FALSE}
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=lev_cc_n)) +
+  geom_point() ->
+  p1
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=lev_coarse_normrate_n)) +
+  geom_point() ->
+  p2
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=lev_coarse_rate_n)) +
+  geom_point() ->
+  p3
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=lev_course_rateorder_n)) +
+  geom_point() ->
+  p4
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=lev_fine_normrate_n)) +
+  geom_point() ->
+  p5
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=lev_fine_rate_n)) +
+  geom_point() ->
+  p6
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=lev_fine_rateorder_n)) +
+  geom_point() ->
+  p7
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=lev_spikeorder_n)) +
+  geom_point() ->
+  p8
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=lev_spikepack_n)) +
+  geom_point() ->
+  p9
+
+# plot rate codes then time codes
+p_c_rates <- plot_grid(p2, p3, p4, nrow=1) 
+p_f_rates <- plot_grid(p5, p6, p7, nrow=1) 
+p_times <- plot_grid(p1, p8, p9, nrow = 1)
+plot_grid(p_c_rates, p_f_rates, p_times, nrow=3)
+```
+
+## KL d.
+
+```{r kl00, fig.height=8, fig.width=8, echo=FALSE}
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=kl_cc)) +
+  geom_point() ->
+  p1
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=kl_coarse_normrate)) +
+  geom_point() ->
+  p2
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=kl_coarse_rate)) +
+  geom_point() ->
+  p3
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=kl_course_rateorder)) +
+  geom_point() ->
+  p4
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=kl_fine_normrate)) +
+  geom_point() ->
+  p5
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=kl_fine_rate)) +
+  geom_point() ->
+  p6
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=kl_fine_rateorder)) +
+  geom_point() ->
+  p7
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=kl_spikeorder)) +
+  geom_point() ->
+  p8
+
+ping00 %>% 
+  ggplot(aes(x=pow_mean, y=kl_spikepack)) +
+  geom_point() ->
+  p9
+
+# plot rate codes then time codes
+p_c_rates <- plot_grid(p2, p3, p4, nrow=1) 
+p_f_rates <- plot_grid(p5, p6, p7, nrow=1) 
+p_times <- plot_grid(p1, p8, p9, nrow = 1)
+plot_grid(p_c_rates, p_f_rates, p_times, nrow=3)
+```
+
+# Ping25
+
+## Levenstien d.
+
+```{r lev25, fig.height=8, fig.width=8, echo=FALSE}
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=lev_cc_n)) +
+  geom_point() ->
+  p1
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=lev_coarse_normrate_n)) +
+  geom_point() ->
+  p2
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=lev_coarse_rate_n)) +
+  geom_point() ->
+  p3
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=lev_course_rateorder_n)) +
+  geom_point() ->
+  p4
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=lev_fine_normrate_n)) +
+  geom_point() ->
+  p5
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=lev_fine_rate_n)) +
+  geom_point() ->
+  p6
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=lev_fine_rateorder_n)) +
+  geom_point() ->
+  p7
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=lev_spikeorder_n)) +
+  geom_point() ->
+  p8
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=lev_spikepack_n)) +
+  geom_point() ->
+  p9
+
+# plot rate codes then time codes
+p_c_rates <- plot_grid(p2, p3, p4, nrow=1) 
+p_f_rates <- plot_grid(p5, p6, p7, nrow=1) 
+p_times <- plot_grid(p1, p8, p9, nrow = 1)
+plot_grid(p_c_rates, p_f_rates, p_times, nrow=3)
+```
+
+## KL d.
+
+```{r kl25, fig.height=8, fig.width=8, echo=FALSE}
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=kl_cc)) +
+  geom_point() ->
+  p1
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=kl_coarse_normrate)) +
+  geom_point() ->
+  p2
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=kl_coarse_rate)) +
+  geom_point() ->
+  p3
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=kl_course_rateorder)) +
+  geom_point() ->
+  p4
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=kl_fine_normrate)) +
+  geom_point() ->
+  p5
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=kl_fine_rate)) +
+  geom_point() ->
+  p6
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=kl_fine_rateorder)) +
+  geom_point() ->
+  p7
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=kl_spikeorder)) +
+  geom_point() ->
+  p8
+
+ping25 %>% 
+  ggplot(aes(x=pow_mean, y=kl_spikepack)) +
+  geom_point() ->
+  p9
+
+# plot rate codes then time codes
+p_c_rates <- plot_grid(p2, p3, p4, nrow=1) 
+p_f_rates <- plot_grid(p5, p6, p7, nrow=1) 
+p_times <- plot_grid(p1, p8, p9, nrow = 1)
+plot_grid(p_c_rates, p_f_rates, p_times, nrow=3)
+```
+
+# Ping50
+
+## Levenstien d.
+
+```{r lev50, fig.height=8, fig.width=8, echo=FALSE}
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=lev_cc_n)) +
+  geom_point() ->
+  p1
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=lev_coarse_normrate_n)) +
+  geom_point() ->
+  p2
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=lev_coarse_rate_n)) +
+  geom_point() ->
+  p3
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=lev_course_rateorder_n)) +
+  geom_point() ->
+  p4
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=lev_fine_normrate_n)) +
+  geom_point() ->
+  p5
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=lev_fine_rate_n)) +
+  geom_point() ->
+  p6
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=lev_fine_rateorder_n)) +
+  geom_point() ->
+  p7
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=lev_spikeorder_n)) +
+  geom_point() ->
+  p8
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=lev_spikepack_n)) +
+  geom_point() ->
+  p9
+
+# plot rate codes then time codes
+p_c_rates <- plot_grid(p2, p3, p4, nrow=1) 
+p_f_rates <- plot_grid(p5, p6, p7, nrow=1) 
+p_times <- plot_grid(p1, p8, p9, nrow = 1)
+plot_grid(p_c_rates, p_f_rates, p_times, nrow=3)
+```
+
+## KL d.
+
+```{r kl50, fig.height=8, fig.width=8, echo=FALSE}
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=kl_cc)) +
+  geom_point() ->
+  p1
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=kl_coarse_normrate)) +
+  geom_point() ->
+  p2
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=kl_coarse_rate)) +
+  geom_point() ->
+  p3
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=kl_course_rateorder)) +
+  geom_point() ->
+  p4
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=kl_fine_normrate)) +
+  geom_point() ->
+  p5
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=kl_fine_rate)) +
+  geom_point() ->
+  p6
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=kl_fine_rateorder)) +
+  geom_point() ->
+  p7
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=kl_spikeorder)) +
+  geom_point() ->
+  p8
+
+ping50 %>% 
+  ggplot(aes(x=pow_mean, y=kl_spikepack)) +
+  geom_point() ->
+  p9
+
+# plot rate codes then time codes
+p_c_rates <- plot_grid(p2, p3, p4, nrow=1) 
+p_f_rates <- plot_grid(p5, p6, p7, nrow=1) 
+p_times <- plot_grid(p1, p8, p9, nrow = 1)
+plot_grid(p_c_rates, p_f_rates, p_times, nrow=3)
+```

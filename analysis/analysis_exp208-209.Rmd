@@ -1,0 +1,1149 @@
+---
+title: "Experiments 208-9"
+author: "Erik J Peterson"
+date: "April 29, 2016"
+output: html_document
+---
+
+```{r helper_fns, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape)
+library(png)
+library(psd)
+library(tidyr)
+library(doParallel)
+library(bspec)
+library(cowplot)
+library(corrplot)
+registerDoParallel(cores=10)
+
+path <- "/home/ejp/src/syncological/data/"
+```
+
+# Load
+
+Load and preprocess the data
+
+```{r load, warning=FALSE, message=FALSE, cache=TRUE}
+# -- load
+iters <- 0:999
+ping <- NULL
+ping_path <- paste(path, "/exp208/", sep="/")
+for(i in iters){
+  tmp <- rbind(
+      read.table(paste(ping_path, as.character(i), "_params.csv", sep=""), 
+                     sep=",", header=FALSE, stringsAsFactors=FALSE),
+      read.table(paste(ping_path, as.character(i), "_analysis.csv", sep=""), 
+                     sep=",", header=FALSE, stringsAsFactors=FALSE)
+  )
+  tmp$iter <- rep(i, nrow(tmp))
+  ping <- rbind(ping, tmp)
+}
+ping <- spread(ping, V1, V2)
+
+# --
+iters <- 0:999
+ing <- NULL
+ing_path <- paste(path, "/exp209/", sep="/")
+for(i in iters){
+  tmp <- rbind(
+      read.table(paste(ing_path, as.character(i), "_params.csv", sep=""), 
+                     sep=",", header=FALSE, stringsAsFactors=FALSE),
+      read.table(paste(ing_path, as.character(i), "_analysis.csv", sep=""), 
+                     sep=",", header=FALSE, stringsAsFactors=FALSE)
+  )
+  tmp$iter <- rep(i, nrow(tmp))
+  ing <- rbind(ing, tmp)
+}
+ing <- spread(ing, V1, V2)
+
+# -- Norm power
+ping$pow_mean_n <- ping$pow_mean / max(ping$pow_mean)
+ing$pow_mean_n <- ing$pow_mean / max(ing$pow_mean)
+
+# # -- Create a normed fidelity factor
+# ping %>%
+#   mutate(
+#     fid_rate = 1 - (ping$lev_course_rate_e / max(ping$lev_course_rate_e)),
+#     fid_spike = 1 - (ping$lev_spike_e / max(ping$lev_spike_e)),
+#     fid_cc = 1 - (ping$lev_cc_e / max(ping$lev_cc_e))
+#   ) -> 
+#   ping
+# 
+# ing %>%
+#   mutate(
+#     fid_rate = 1 - (ping$lev_course_rate_e / max(ping$lev_course_rate_e)),
+#     fid_spike = 1 - (ping$lev_spike_e / max(ping$lev_spike_e)),
+#     fid_cc= 1 - (ping$lev_cc_e / max(ping$lev_cc_e))
+#   ) -> 
+#   ing
+
+# -- Flip dissimarity of sync
+ping %>%
+  mutate(
+    sim_ise_e = 1 - s_isi_e,
+    sim_sync_e = 1 - s_sync_e
+  ) ->
+  ping
+
+ing %>%
+  mutate(
+    sim_ise_e = 1 - s_isi_e,
+    sim_sync_e = 1 - s_sync_e
+  ) ->
+  ing
+
+# -- Flip sta_distance
+ping %>%
+  mutate(
+    sta_sim = 1 - sta_distance
+  ) ->
+  ping
+
+ing %>%
+  mutate(
+    sta_sim = 1 - sta_distance
+  ) ->
+  ing
+
+# -- Create binned parameter ratios to ease plotting and analysis
+ping %>%
+  mutate(
+    ie_ratio = as.integer(round(w_ie/w_ei)),
+    e_ratio = as.integer(round(w_e/min(w_ei)))
+  ) ->
+  ping
+
+ing %>%
+  mutate(
+    ie_ratio = as.integer(round(w_ie/w_ei)),
+    e_ratio = as.integer(round(w_e/min(w_ei)))
+  ) ->
+  ing
+
+
+ping_rank <- select(ping[order(ping$pow_mean_n), ], pow_mean, pow_mean_n, w_e, w_i, w_ei, w_ie, w_ee, w_ii, e_ratio, ie_ratio)
+
+ing_rank <- select(ing[order(ing$pow_mean_n), ], pow_mean, pow_mean_n, w_e, w_i, w_ei, w_ie, w_ee, w_ii, e_ratio, ie_ratio)
+
+# Cleanup
+rm(i, tmp)
+```
+
+
+# Gamma power and coding
+
+Left PING. Right ING.
+
+```{r power_and_code, echo=FALSE, fig.height=7, fig.width=5, warning=FALSE, message=FALSE}
+# PING
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=s_sync_e)) +
+  geom_point() +
+  theme_classic() ->
+  pow1
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=lev_spike_e_n)) +
+  geom_point() +
+  theme_classic() ->
+  pow2
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=lev_course_rate_e_n)) +
+  geom_point() +
+  theme_classic() ->
+  pow3
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=kl_spike_e)) +
+  geom_point() +
+  theme_classic() ->
+  pow4
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=kl_fine_rate_e)) +
+  geom_point() +
+  theme_classic() ->
+  pow5
+
+# -
+# ING
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=s_sync_e)) +
+  geom_point() +
+  theme_classic() ->
+  pow6
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=lev_spike_e_n)) +
+  geom_point() +
+  theme_classic() ->
+  pow7
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=lev_fine_rate_e_n)) +
+  geom_point() +
+  theme_classic() ->
+  pow8
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=kl_spike_e)) +
+  geom_point() +
+  theme_classic() ->
+  pow9
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=kl_fine_rate_e)) +
+  geom_point() +
+  theme_classic() ->
+  pow10
+
+
+plot_grid(pow1, pow6,
+          pow2, pow7,
+          pow3, pow8,
+          pow4, pow9,
+          pow5, pow10,
+          ncol=2)
+```
+
+# Gamma power by STA RMSE
+
+Left PING. Right ING.
+
+```{r power_and_rmse, echo=FALSE, fig.height=2.5, fig.width=5, warning=FALSE, message=FALSE}
+# PING
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=rmse)) +
+  geom_point() +
+  theme_classic() ->
+  sta1
+
+# -
+# ING
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=rmse)) +
+  geom_point() +
+  theme_classic() ->
+  sta2
+
+plot_grid(sta1, sta2,
+          ncol=2)
+```
+
+# Gamma power by parameters
+
+Left PING. Right ING.
+
+```{r power_and_parameters, echo=FALSE, fig.height=2.5, fig.width=5, warning=FALSE, message=FALSE}
+# PING
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=w_ie/w_ei)) +
+  geom_point() +
+  theme_classic() ->
+  ppar1
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=w_e/max(w_e))) +
+  geom_point() +
+  theme_classic() ->
+  ppar2
+
+# -
+# ING
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=w_ie/w_ei)) +
+  geom_point() +
+  theme_classic() ->
+  ppar3
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=w_e/max(w_e))) +
+  geom_point() +
+  theme_classic() ->
+  ppar4
+
+plot_grid(ppar1, ppar3,
+          ppar2, ppar4,
+          ncol=2)
+```
+
+
+
+# Parameters and coding
+
+## `w_ie / w_ie`
+
+Left PING. Right ING.
+
+```{r parameters_and_code_wie, echo=FALSE, fig.height=7, fig.width=5, warning=FALSE, message=FALSE}
+# PING
+ping %>%
+  ggplot(aes(x=factor(ie_ratio), y=s_sync_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  ieei1
+
+ping %>%
+  ggplot(aes(x=factor(ie_ratio), y=lev_spike_e_n)) +
+  geom_boxplot() +
+  theme_classic() ->
+  ieei2
+
+ping %>%
+  ggplot(aes(x=factor(ie_ratio), y=lev_course_rate_e_n)) +
+  geom_boxplot() +
+  theme_classic() ->
+  ieei3
+
+ping %>%
+  ggplot(aes(x=factor(ie_ratio), y=kl_spike_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  ieei4
+
+ping %>%
+  ggplot(aes(x=factor(ie_ratio), y=kl_fine_rate_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  ieei5
+
+# -
+# ING
+ing %>%
+  ggplot(aes(x=factor(ie_ratio), y=s_sync_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  ieei6
+
+ing %>%
+  ggplot(aes(x=factor(ie_ratio), y=lev_spike_e_n)) +
+  geom_boxplot() +
+  theme_classic() ->
+  ieei7
+
+ing %>%
+  ggplot(aes(x=factor(ie_ratio), y=lev_course_rate_e_n)) +
+  geom_boxplot() +
+  theme_classic() ->
+  ieei8
+
+ing %>%
+  ggplot(aes(x=factor(ie_ratio), y=kl_spike_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  ieei9
+
+ing %>%
+  ggplot(aes(x=factor(ie_ratio), y=kl_fine_rate_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  ieei10
+
+plot_grid(ieei1, ieei6,
+          ieei2, ieei7,
+          ieei3, ieei8,
+          ieei4, ieei9,
+          ieei5, ieei10,
+          ncol=2)
+```
+
+
+## `w_e / min(w_e)`
+
+Left PING. Right ING.
+
+```{r parameters_and_code_we, echo=FALSE, fig.height=7, fig.width=5, warning=FALSE, message=FALSE}
+# PING
+ping %>%
+  ggplot(aes(x=factor(e_ratio), y=s_sync_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  we1
+
+ping %>%
+  ggplot(aes(x=factor(e_ratio), y=lev_spike_e_n)) +
+  geom_boxplot() +
+  theme_classic() ->
+  we2
+
+ping %>%
+  ggplot(aes(x=factor(e_ratio), y=lev_fine_rate_e_n)) +
+  geom_boxplot() +
+  theme_classic() ->
+  we3
+
+ping %>%
+  ggplot(aes(x=factor(e_ratio), y=kl_spike_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  we4
+
+ping %>%
+  ggplot(aes(x=factor(e_ratio), y=kl_fine_rate_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  we5
+
+# -
+# ING
+ing %>%
+  ggplot(aes(x=factor(e_ratio), y=s_sync_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  we6
+
+ing %>%
+  ggplot(aes(x=factor(e_ratio), y=lev_spike_e_n)) +
+  geom_boxplot() +
+  theme_classic() ->
+  we7
+
+ing %>%
+  ggplot(aes(x=factor(e_ratio), y=lev_fine_rate_e_n)) +
+  geom_boxplot() +
+  theme_classic() ->
+  we8
+
+ing %>%
+  ggplot(aes(x=factor(e_ratio), y=kl_spike_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  we9
+
+ing %>%
+  ggplot(aes(x=factor(e_ratio), y=kl_fine_rate_e)) +
+  geom_boxplot() +
+  theme_classic() ->
+  we10
+
+
+plot_grid(we1, we6,
+          we2, we7,
+          we3, we8,
+          we4, we9,
+          we5, we10,
+          ncol=2)
+```
+
+
+# Power, code, and parameters
+
+## Plot as paramters heat map
+
+Top PING. Bottom ING.
+
+### w_e
+
+```{r power_and_code_and_parameters_e, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE, message=FALSE}
+# w_e
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=s_sync_e, color=w_e/min(w_e))) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e2
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=lev_spike_e_n, color=w_e/min(w_e))) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e3
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=lev_course_rate_e_n, color=w_e/min(w_e))) +
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e4
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=kl_spike_e, color=w_e/min(w_e))) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e5
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=kl_course_rate_e, color=w_e/min(w_e))) +
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e6
+
+# --
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=s_sync_e, color=w_e/min(w_e))) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e7
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=lev_spike_e_n, color=w_e/min(w_e))) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e8
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=lev_course_rate_e_n, color=w_e/min(w_e))) +
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e9
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=kl_spike_e, color=w_e/min(w_e))) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e10
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=kl_course_rate_e, color=w_e/min(w_e))) +
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e11
+
+# --
+# Make grid
+prow <- plot_grid(
+          e2, e3, e4, e5, e6,
+          e7, e8, e9, e10, e11,
+          ncol = 5, nrow=2)
+
+# Make common legend
+grobs <- ggplotGrob(e2 + theme(legend.position="bottom"))$grobs
+legend_b <- grobs[[which(sapply(grobs, function(x) x$name) == "guide-box")]]
+
+# Join grid and legend
+plot_grid(prow, legend_b, ncol = 1, rel_heights = c(1, .2))
+```
+
+### w_ie
+
+```{r power_and_code_and_parameters_ie, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE, message=FALSE}
+# --
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=s_sync_e, color=w_ie/w_ei)) + 
+  geom_point(alpha=0.1) +  
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie2
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=lev_spike_e_n, color=w_ie/w_ei)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie3 
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=lev_course_rate_e_n, color=w_ie/w_ei)) + 
+  geom_point(alpha=0.1) +  
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  ie4
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=kl_spike_e, color=w_ie/w_ei)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie5
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=kl_course_rate_e, color=w_ie/w_ei)) + 
+  geom_point(alpha=0.1) +
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  ie6
+
+#--
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=s_sync_e, color=w_ie/w_ei)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie7
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=lev_spike_e_n, color=w_ie/w_ei)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie8
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=lev_course_rate_e_n, color=w_ie/w_ei)) + 
+  geom_point(alpha=0.1) +  
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  ie9
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=kl_spike_e, color=w_ie/w_ei)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie10
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=kl_course_rate_e, color=w_ie/w_ei)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  ie11
+
+
+# --
+# Make grid
+prow <- plot_grid(
+          ie2, ie3, ie4, ie5, ie6, 
+          ie7, ie8, ie9, ie10, ie11, 
+          ncol = 5, nrow=2)
+
+# Make common legend
+grobs <- ggplotGrob(ie3 + theme(legend.position="bottom"))$grobs
+legend_b <- grobs[[which(sapply(grobs, function(x) x$name) == "guide-box")]]
+
+# Join grid and legend
+plot_grid(prow, legend_b, ncol = 1, rel_heights = c(1, .2))
+```
+
+## Plot as binned parameters by power
+
+Top PING. Bottom ING.
+
+### w_e
+
+```{r power_and_code_and_parameters_e2, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE, message=FALSE}
+# w_e
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=s_sync_e, color=factor(e_ratio))) + 
+  stat_smooth(alpha=0.3) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu")  +
+  theme(legend.position="none") -> 
+  e2
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=lev_spike_e_n, color=factor(e_ratio))) + 
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  e3
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=lev_course_rate_e_n, color=factor(e_ratio))) +
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  e4
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=kl_spike_e, color=factor(e_ratio))) + 
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  e5
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=kl_course_rate_e, color=factor(e_ratio))) +
+  stat_smooth(alpha=0.4) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  e6
+
+# --
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=s_sync_e, color=factor(e_ratio))) + 
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  e7
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=lev_spike_e_n, color=factor(e_ratio))) + 
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  e8
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=lev_course_rate_e_n, color=factor(e_ratio))) +
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  e9
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=kl_spike_e, color=factor(e_ratio))) + 
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  e10
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=kl_course_rate_e, color=factor(e_ratio))) +
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  e11
+
+# --
+# Make grid
+prow <- plot_grid(
+          e2, e3, e4, e5, e6,
+          e7, e8, e9, e10, e11,
+          ncol = 5, nrow=2)
+
+# Make common legend
+grobs <- ggplotGrob(e2 + theme(legend.position="bottom"))$grobs
+legend_b <- grobs[[which(sapply(grobs, function(x) x$name) == "guide-box")]]
+
+# Join grid and legend
+plot_grid(prow, legend_b, ncol = 1, rel_heights = c(1, .2))
+```
+
+### w_ie
+
+```{r power_and_code_and_parameters_ie2, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE, message=FALSE}
+# --
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=s_sync_e, color=factor(ie_ratio))) + 
+  stat_smooth(alpha=0.2) +  
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") + 
+  theme(legend.position="none") -> 
+  ie2
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=lev_spike_e_n, color=factor(ie_ratio))) + 
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") + 
+  theme(legend.position="none") -> 
+  ie3 
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=lev_course_rate_e_n, color=factor(ie_ratio))) + 
+  stat_smooth(alpha=0.2) +  
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  ie4
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=kl_spike_e, color=factor(ie_ratio))) + 
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") + 
+  theme(legend.position="none") -> 
+  ie5
+
+ping %>%
+  ggplot(aes(x=pow_mean_n, y=kl_course_rate_e, color=factor(ie_ratio))) + 
+  stat_smooth(alpha=0.2) +
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  ie6
+
+#--
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=s_sync_e, color=factor(ie_ratio))) + 
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") + 
+  theme(legend.position="none") -> 
+  ie7
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=lev_spike_e_n, color=factor(ie_ratio))) + 
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") + 
+  theme(legend.position="none") -> 
+  ie8
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=lev_course_rate_e_n, color=factor(ie_ratio))) + 
+  stat_smooth(alpha=0.2) +  
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  ie9
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=kl_spike_e, color=factor(ie_ratio))) + 
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") + 
+  theme(legend.position="none") -> 
+  ie10
+
+ing %>%
+  ggplot(aes(x=pow_mean_n, y=kl_course_rate_e, color=factor(ie_ratio))) + 
+  stat_smooth(alpha=0.2) + 
+  theme_classic() + 
+  scale_color_brewer(palette="YlGnBu") +
+  theme(legend.position="none") -> 
+  ie11
+
+
+# --
+# Make grid
+prow <- plot_grid(
+          ie2, ie3, ie4, ie5, ie6, 
+          ie7, ie8, ie9, ie10, ie11, 
+          ncol = 5, nrow=2)
+
+# Make common legend
+grobs <- ggplotGrob(ie3 + theme(legend.position="bottom"))$grobs
+legend_b <- grobs[[which(sapply(grobs, function(x) x$name) == "guide-box")]]
+
+# Join grid and legend
+plot_grid(prow, legend_b, ncol = 1, rel_heights = c(1, .2))
+```
+
+
+# Plot as power heat map
+
+Top PING. Bottom ING.
+
+### w_e
+
+```{r power_and_code_and_parameters_pow_e, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE, message=FALSE}
+# w_e
+ping %>%
+  ggplot(aes(x=w_e/min(w_e), y=s_sync_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e2
+
+ping %>%
+  ggplot(aes(x=w_e/min(w_e), y=lev_spike_e_n, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e3
+
+ping %>%
+  ggplot(aes(x=w_e/min(w_e), y=lev_course_rate_e_n, color=pow_mean_n)) +
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e4
+
+ping %>%
+  ggplot(aes(x=w_e/min(w_e), y=kl_spike_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e5
+
+ping %>%
+  ggplot(aes(x=w_e/min(w_e), y=kl_course_rate_e, color=pow_mean_n)) +
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e6
+
+# --
+ing %>%
+  ggplot(aes(x=w_e/min(w_e), y=s_sync_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e7
+
+ing %>%
+  ggplot(aes(x=w_e/min(w_e), y=lev_spike_e_n, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e8
+
+ing %>%
+  ggplot(aes(x=w_e/min(w_e), y=lev_course_rate_e_n, color=pow_mean_n)) +
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e9
+
+ing %>%
+  ggplot(aes(x=w_e/min(w_e), y=kl_spike_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e10
+
+ing %>%
+  ggplot(aes(x=w_e/min(w_e), y=kl_course_rate_e, color=pow_mean_n)) +
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  e11
+
+# --
+# Make grid
+prow <- plot_grid(
+          e2, e3, e4, e5, e6,
+          e7, e8, e9, e10, e11,
+          ncol = 5, nrow=2)
+
+# Make common legend
+grobs <- ggplotGrob(e2 + theme(legend.position="bottom"))$grobs
+legend_b <- grobs[[which(sapply(grobs, function(x) x$name) == "guide-box")]]
+
+# Join grid and legend
+plot_grid(prow, legend_b, ncol = 1, rel_heights = c(1, .2))
+```
+
+### w_ie
+
+```{r power_and_code_and_parameters_pow_ie, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE, message=FALSE}
+# --
+ping %>%
+  ggplot(aes(x=w_ie/w_ei, y=s_sync_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) +  
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie2
+
+ping %>%
+  ggplot(aes(x=w_ie/w_ei, y=lev_spike_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie3 
+
+ping %>%
+  ggplot(aes(x=w_ie/w_ei, y=lev_fine_rate_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) +  
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  ie4
+
+ping %>%
+  ggplot(aes(x=w_ie/w_ei, y=kl_spike_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie5
+
+ping %>%
+  ggplot(aes(x=w_ie/w_ei, y=kl_fine_rate_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) +
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  ie6
+
+#--
+ing %>%
+  ggplot(aes(x=w_ie/w_ei, y=s_sync_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie7
+
+ing %>%
+  ggplot(aes(x=w_ie/w_ei, y=lev_spike_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie8
+
+ing %>%
+  ggplot(aes(x=w_ie/w_ei, y=lev_fine_rate_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) +  
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  ie9
+
+ing %>%
+  ggplot(aes(x=w_ie/w_ei, y=kl_spike_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() + 
+  theme(legend.position="none") -> 
+  ie10
+
+ing %>%
+  ggplot(aes(x=w_ie/w_ei, y=kl_fine_rate_e, color=pow_mean_n)) + 
+  geom_point(alpha=0.1) + 
+  theme_classic() + 
+  scale_color_continuous() +
+  theme(legend.position="none") -> 
+  ie11
+
+
+# --
+# Make grid
+prow <- plot_grid(
+          ie2, ie3, ie4, ie5, ie6, 
+          ie7, ie8, ie9, ie10, ie11, 
+          ncol = 5, nrow=2)
+
+# Make common legend
+grobs <- ggplotGrob(ie3 + theme(legend.position="bottom"))$grobs
+legend_b <- grobs[[which(sapply(grobs, function(x) x$name) == "guide-box")]]
+
+# Join grid and legend
+plot_grid(prow, legend_b, ncol = 1, rel_heights = c(1, .2))
+```
+
+# Both parameters, heat map of measure values
+
+Left PING. Right ING.
+
+```{r parameters_parameters, echo=FALSE, fig.height=8, fig.width=7, warning=FALSE, message=FALSE}
+# PING
+ping %>%
+  ggplot(aes(x=ie_ratio, y=e_ratio, fill=s_sync_e)) +
+  geom_raster() +
+  theme_classic() +
+  scale_fill_gradient(low = "brown", high = "white") ->
+  parpar0
+
+ping %>%
+  ggplot(aes(x=ie_ratio, y=e_ratio, fill=pow_mean_n)) +
+  geom_tile() +
+  scale_fill_gradient(low = "brown", high = "white") +
+  theme_classic() ->
+  parpar1
+
+ping %>%
+  ggplot(aes(x=ie_ratio, y=e_ratio, fill=lev_spike_e)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "brown") +
+  theme_classic() ->
+  parpar2
+
+ping %>%
+  ggplot(aes(x=ie_ratio, y=e_ratio, fill=lev_course_rate_e)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "brown") +
+  theme_classic() ->
+  parpar3
+
+# -
+# ING
+ing %>%
+  ggplot(aes(x=ie_ratio, y=e_ratio, fill=s_sync_e)) +
+  geom_raster() +
+  theme_classic() +
+  scale_fill_gradient(low = "brown", high = "white") ->
+  parpar4
+
+ing %>%
+  ggplot(aes(x=ie_ratio, y=e_ratio, fill=pow_mean_n)) +
+  geom_tile() +
+  scale_fill_gradient(low = "brown", high = "white") +
+  theme_classic() ->
+  parpar5
+
+ing %>%
+  ggplot(aes(x=ie_ratio, y=e_ratio, fill=lev_spike_e)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "brown") +
+  theme_classic() ->
+  parpar6
+
+ing %>%
+  ggplot(aes(x=ie_ratio, y=e_ratio, fill=lev_course_rate_e)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "brown") +
+  theme_classic() ->
+  parpar7
+
+c1 <- plot_grid(parpar0, parpar1, parpar2, parpar3, nrow=4)
+c2 <- plot_grid(parpar4, parpar5, parpar6, parpar7, nrow=4)
+plot_grid(c1, c2, ncol=2)
+```
+
+```{r code_and_power_and_sta_corr, eval=FALSE}
+# Get the codes, etc
+ping %>%
+  select(pow_mean_n, fid_rate, fid_spike, sim_sync_e, sta_sim) ->
+  p_r_codes
+
+ing %>%
+  select(pow_mean_n, fid_rate, fid_spike, sim_sync_e, sta_sim) ->
+  i_codes
+
+col2 <- colorRampPalette(c("#67001F", "#B2182B", "#D6604D", "#F4A582", "#FDDBC7", 
+                           "#FFFFFF", "#D1E5F0", "#92C5DE", "#4393C3", "#2166AC", 
+                           "#053061"))
+
+corrplot(cor(p_codes, method="spearman"), 
+         col=rev(col2(100)), method="color", 
+         order="alphabet", 
+         tl.col = "black", addCoef.col="black", 
+         diag = FALSE, type = "upper", 
+         cl.ratio = 0.2, cl.align = "l")
+
+corrplot(cor(i_codes, method="spearman"), 
+         col=rev(col2(100)), method="color", 
+         order="alphabet", 
+         tl.col = "black", addCoef.col="black", 
+         diag = FALSE, type = "upper", 
+         cl.ratio = 0.2, cl.align = "l")
+```
