@@ -17,7 +17,7 @@ def create_ij(p, Ni, Nj, prng=None):
     """
     if prng is None:
         prng = np.random.RandomState()
-    
+
     Ni = int(Ni)
     Nj = int(Nj)
 
@@ -31,7 +31,7 @@ def create_ij(p, Ni, Nj, prng=None):
 
     return conn_i, conn_j, prng
 
-    
+
 def thal_spikes(t, f, N, k, prng=None):
     """Create synchronous bursts (1 ms variance) of thalamic-ish spike
 
@@ -59,7 +59,7 @@ def thal_spikes(t, f, N, k, prng=None):
     if prng is None:
         prng = np.random.RandomState()
 
-    spikes_stdev = 1 / 1000.0 # ms
+    spikes_stdev = 1 / 1000.0  # ms
 
     # Locate about where the pulses of spikes will go, at f,
     dt = 1 / float(f)
@@ -145,11 +145,11 @@ def gaussian_impulse(t, min_t, max_t, stdev, N, k, decimals=5, prng=None):
     times = times[mask]
 
     # Drop identical times
-    times = np.unique(times) #[0:k]
+    times = np.unique(times)  #[0:k]
 
     # Drop identical times
     # Randomly assign neurons to times
-    idx = prng.random_integers(0, N-1, size=len(times))
+    idx = prng.random_integers(0, N - 1, size=len(times))
 
     return times, idx
 
@@ -170,15 +170,9 @@ def pad_rate(pad, rates, times, dt):
     """
     n_steps = int(pad * (1.0 / dt))
     pad_times = np.linspace(0, pad, n_steps - 1)
-        
-    times = np.concatenate([
-        pad_times, 
-        pad_times.max() + times
-    ])
-    rates = np.concatenate([
-        np.zeros(int(np.ceil(pad * (1 / dt))) - 1), 
-        rates
-    ])
+
+    times = np.concatenate([pad_times, pad_times.max() + times])
+    rates = np.concatenate([np.zeros(int(np.ceil(pad * (1 / dt))) - 1), rates])
 
     return rates, times
 
@@ -201,7 +195,11 @@ def create_trials(n, offset, ns, ts):
     ts = np.asarray(ts)
     ns = np.asarray(ns)
 
-    ts_trial, ns_trial = [offset + ts, ], [ns, ]
+    ts_trial, ns_trial = [
+        offset + ts,
+    ], [
+        ns,
+    ]
     for i in range(n - 1):
         last_t = np.max(ts_trial[-1])
         ts_trial.append(ts + last_t + offset)
