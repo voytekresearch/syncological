@@ -1154,3 +1154,10 @@ exp600_735_analysis_only:
 
 # TODO in the analysis phase, look at pre-synapse number and its effect 
 # on the three metric classes.
+#
+#
+# NOTE:
+# The chaos underlying gamma focus reuires a slight re-think/rerun of these exps
+# as such on 3-29-2017 I deleted all recent results. I needed to make room
+# for other exps; these data are nearly 0.5 TB!
+# Sorry future me.
